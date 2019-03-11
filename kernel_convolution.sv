@@ -1,27 +1,147 @@
+// with saturation clipping
 module kernel_convolution
-#(
-parameter KERNEL_SIZE = 3,
-parameter WIDTH = 640,
-parameter HEIGHT = 480
-)
-(
-input logic clock, enable,
-input logic load_reg,
+	#(parameter KERNEL_SIZE = 3)
+	(
+	input logic clk, reset,
 
-// rgb with 10 bits each (signed integer)
-input signed [HEIGHT - 1:0][WIDTH - 1:0] input_img [29:0], 
+	// rgb with 32 bits each (signed integer)
+	input logic signed [95:0] buffer_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0], 
+		
+	// assume 31 bit signed integer for channel
+	// kernel dimensions are w x h x 3
+	input logic signed [95:0] kernel_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0] ,
+		
+	// output signed
+	output logic signed [31:0] ans 
+	);	
 	
-// assume 5 bit signed integer for each input
-// kernel dimensions are w x h x c
-input signed [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0][2:0] kernel [4:0],
+	// loading kernel
+	logic signed [95:0] kernel [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	logic signed [95:0] buffer[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	always_ff @(posedge clk) begin
+		if (reset) begin
+			kernel <= kernel_in;
+			buffer <= buffer_in;
+		end
+	end
 	
-output signed [HEIGHT - 1:0][WIDTH - 1:0] output_img [29:0],
-
-output logic done
-);
-
-assign done = 0;
-
+	// multiply and accumulate across rows and columns
+	logic signed [31:0] sum
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	genvar row, col;
+	generate
+		for (row = 0; row < KERNEL_SIZE; row += 1) begin: gen_row1
+			for (col = 0; col < KERNEL_SIZE; col += 1) begin: gen_col2
+				logic signed [31:0] br, bg, bb;
+				logic signed [31:0] kr, kg, kb;
+				assign {br, bg, bb} = buffer[row][col];
+				assign {kr, kg, kb} = kernel[row][col];
+				
+				assign sum[row][col] = br * kr + bg * kg + bb * kb;
+			end
+		end
+	endgenerate
+	
+	logic signed 
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0]
+	accumulator_col [31:0];
+	generate
+		for (row = 0; row < KERNEL_SIZE; row += 1) begin: gen_row2
+			assign accumulator_col[row][0] = sum[row][0];
+			for (col = 1; col < KERNEL_SIZE; col += 1) begin: gen_col2			
+				assign accumulator_col[row][col] = accumulator_col[row][col - 1] + sum[row][col];
+			end
+		end
+	endgenerate
+	
+	logic signed [KERNEL_SIZE - 1:0] accumulator_row [31:0];
+	generate
+		assign accumulator_row[0] = accumulator_col[0][KERNEL_SIZE - 1];
+		for (row = 1; row < KERNEL_SIZE; row += 1) begin: gen_row3
+			assign accumulator_row[row] = accumulator_row[row - 1] + accumulator_col[row][KERNEL_SIZE - 1];
+		end
+	endgenerate
+	
+	always_ff @(posedge clk) begin
+		if (!reset) ans <= accumulator_row[KERNEL_SIZE - 1];
+	end
+	
 endmodule
 
-module kernel_convolution_controlpath
+module kernel_convolution_test_bench ();
+	localparam KERNEL_SIZE = 5;
+
+	logic clk, reset;
+
+	// rgb with 32 bits each (signed integer)
+	logic signed [95:0] buffer_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	
+	// rgb for visualization
+	logic signed [32:0] r_buffer_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	logic signed [32:0] g_buffer_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	logic signed [32:0] b_buffer_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];	
+	
+	// assume 31 bit signed integer for channel
+	// kernel dimensions are w x h x 3
+	logic signed [95:0] kernel_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+		
+	// rgb for visualization
+	logic signed [32:0] r_kernel_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	logic signed [32:0] g_kernel_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	logic signed [32:0] b_kernel_in
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	
+	// output signed
+	logic signed [31:0] ans;
+	
+	kernel_convolution #(KERNEL_SIZE) dut (.*);
+	
+	// Set up the clock.
+	parameter CLOCK_PERIOD=100;
+	initial clk=1;
+	always begin
+		#(CLOCK_PERIOD/2);
+		clk = ~clk;
+	end
+	
+	integer i, j;
+	initial begin
+		for (i = 0; i < KERNEL_SIZE; i++) begin
+			for (j = 0; j < KERNEL_SIZE; j++) begin
+				reg signed [31:0] br, bg, bb, kr, kg, kb;
+				assign br = i * j; 
+				assign bg = i + j; 
+				assign bb = j;
+				assign kr = 1;
+				assign kg = -1;
+				assign kb = 2;
+				
+				buffer_in[i][j] = {br, bg, bb};
+				kernel_in[i][j] = {kr, kg, kb};
+				
+			   {r_buffer_in[i][j], 
+			   g_buffer_in[i][j],
+			   b_buffer_in[i][j]} = buffer_in[i][j];
+
+			   {r_kernel_in[i][j], 
+			   g_kernel_in[i][j],
+			   b_kernel_in[i][j]} = r_kernel_in[i][j];
+			end
+		end
+		
+		reset <= 1; @(posedge clk); @(posedge clk); 
+		reset <= 0; @(posedge clk); @(posedge clk);
+				
+		$stop;
+	end //initial
+endmodule
+
