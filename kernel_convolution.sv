@@ -44,9 +44,8 @@ module kernel_convolution
 		end
 	endgenerate
 	
-	logic signed 
-	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0]
-	accumulator_col [31:0];
+	logic signed [31:0] accumulator_col
+	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 	generate
 		for (row = 0; row < KERNEL_SIZE; row += 1) begin: gen_row2
 			assign accumulator_col[row][0] = sum[row][0];
@@ -56,7 +55,7 @@ module kernel_convolution
 		end
 	endgenerate
 	
-	logic signed [KERNEL_SIZE - 1:0] accumulator_row [31:0];
+	logic signed [31:0] accumulator_row [KERNEL_SIZE - 1:0];
 	generate
 		assign accumulator_row[0] = accumulator_col[0][KERNEL_SIZE - 1];
 		for (row = 1; row < KERNEL_SIZE; row += 1) begin: gen_row3
@@ -113,32 +112,34 @@ module kernel_convolution_test_bench ();
 		clk = ~clk;
 	end
 	
-	integer i, j;
-	initial begin
-		for (i = 0; i < KERNEL_SIZE; i++) begin
-			for (j = 0; j < KERNEL_SIZE; j++) begin
-				reg signed [31:0] br, bg, bb, kr, kg, kb;
-				assign br = i * j; 
-				assign bg = i + j; 
-				assign bb = j;
-				assign kr = 1;
-				assign kg = -1;
-				assign kb = 2;
-				
-				buffer_in[i][j] = {br, bg, bb};
-				kernel_in[i][j] = {kr, kg, kb};
-				
-			   {r_buffer_in[i][j], 
-			   g_buffer_in[i][j],
-			   b_buffer_in[i][j]} = buffer_in[i][j];
+	genvar i, j; 
+	generate
+		for (i = 0; i < KERNEL_SIZE; i++) begin: genrow
+				for (j = 0; j < KERNEL_SIZE; j++) begin: gencol
+					reg signed [31:0] br, bg, bb, kr, kg, kb;
+					assign br = i * j; 
+					assign bg = i + j; 
+					assign bb = j;
+					assign kr = 1;
+					assign kg = -1;
+					assign kb = 2;
+					
+					assign buffer_in[i][j] = {br, bg, bb};
+					assign kernel_in[i][j] = {kr, kg, kb};
+					
+					assign r_buffer_in[i][j] = br;
+					assign g_buffer_in[i][j] = bg;
+					assign b_buffer_in[i][j] = bb;
 
-			   {r_kernel_in[i][j], 
-			   g_kernel_in[i][j],
-			   b_kernel_in[i][j]} = r_kernel_in[i][j];
-			end
+					assign r_kernel_in[i][j] = kr;
+					assign g_kernel_in[i][j] = kg;
+					assign b_kernel_in[i][j] = kb;
+				end
 		end
+	endgenerate
+	initial begin
 		
-		reset <= 1; @(posedge clk); @(posedge clk); 
+		reset <= 1; @(posedge clk);
 		reset <= 0; @(posedge clk); @(posedge clk);
 				
 		$stop;
