@@ -45,4 +45,12 @@ output logic [7:0] buffer [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0]
 			end
 		end
 	endgenerate
+	
+	always_ff @(posedge clk) begin
+		if (reset) counter <= 0;
+		else begin
+			if(counter < ROW_WIDTH - KERNEL_SIZE) counter <= counter + 1;
+			else counter <= 0;
+		end
+	end
 endmodule
