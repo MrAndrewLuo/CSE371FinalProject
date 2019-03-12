@@ -5,12 +5,12 @@ module kernel_convolution
 	input logic clk, reset,
 
 	// rgb with 32 bits each (signed integer)
-	input logic signed [95:0] buffer_in
+	input logic signed [47:0] buffer_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0], 
 		
 	// assume 31 bit signed integer for channel
 	// kernel dimensions are w x h x 3
-	input logic signed [95:0] kernel_in
+	input logic signed [47:0] kernel_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0] ,
 		
 	// output signed
@@ -18,8 +18,8 @@ module kernel_convolution
 	);	
 	
 	// loading kernel
-	logic signed [95:0] kernel [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
-	logic signed [95:0] buffer[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	logic signed [47:0] kernel [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	logic signed [47:0] buffer[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 	always_ff @(posedge clk) begin
 		if (reset) begin
 			kernel <= kernel_in;
@@ -75,7 +75,7 @@ module kernel_convolution_test_bench ();
 	logic clk, reset;
 
 	// rgb with 32 bits each (signed integer)
-	logic signed [95:0] buffer_in
+	logic signed [47:0] buffer_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 	
 	// rgb for visualization
@@ -88,7 +88,7 @@ module kernel_convolution_test_bench ();
 	
 	// assume 31 bit signed integer for channel
 	// kernel dimensions are w x h x 3
-	logic signed [95:0] kernel_in
+	logic signed [47:0] kernel_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 		
 	// rgb for visualization
