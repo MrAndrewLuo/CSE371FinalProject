@@ -1,6 +1,9 @@
 // Warning: the Terasic VGA controller appears to have a few off-by-one errors.  If your code is very 
 // sensitive to the EXACT number of pixels per line, you may have issues.  You have been warned!
 
+// Warning: the Terasic VGA controller appears to have a few off-by-one errors.  If your code is very 
+// sensitive to the EXACT number of pixels per line, you may have issues.  You have been warned!
+
 module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 (
 	input logic		          		VGA_CLK, // 25 MHz clock
@@ -41,51 +44,75 @@ module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 	input logic 		     [1:0]		KEY, // Key[2] reserved for reset, key[3] for auto-focus.
 	input logic			     [8:0]		SW   // SW[9] reserved for auto-focus mode.
 );
-	localparam PRECISION_BITS = 16;
-	localparam SCREEN_DELAY = 1;
-	
-/*
-	module sliding_window 
-#(parameter KERNEL_SIZE = 3, ROW_WIDTH=640, WORD_SIZE = 8) 
-(
-input logic clk, reset,
-input logic signed [WORD_SIZE - 1:0] pixel_in,
-output logic signed [WORD_SIZE - 1:0] buffer [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0]
-);*/
 
 	// Simple graphics hack
-	logic [27:0] VGA_BUFFER;
-	logic [27:0] VGA_OUT;	
-	
+	logic [27:0] delay [1:0];
+	logic [7:0] delta_R;
+	logic [7:0] delta_G;
+	logic [7:0] delta_B;
+	logic [7:0] grayscale;
+	logic signed [15:0] grayscale16;
+	logic [15:0] r, g, b;
+	logic [27:0] prev_delay0;
+
 	// Before and after delays.
 	always_ff @(posedge VGA_CLK) begin
-		{oVGA_R, oVGA_G, oVGA_B, oVGA_HS, oVGA_VS, oVGA_SYNC_N, oVGA_BLANK_N} <= VGA_OUT;
-		VGA_BUFFER <= {iVGA_R, iVGA_G, iVGA_B, iVGA_HS, iVGA_VS, iVGA_SYNC_N, iVGA_BLANK_N};
+		{oVGA_R, oVGA_G, oVGA_B, oVGA_HS, oVGA_VS, oVGA_SYNC_N, oVGA_BLANK_N} <= delay[1];
+		prev_delay0 <= delay[0];
+		delay[0] <= {iVGA_R, iVGA_G, iVGA_B, iVGA_HS, iVGA_VS, iVGA_SYNC_N, iVGA_BLANK_N};
 	end
 	
-	// grayscale
-	logic signed [PRECISION_BITS - 1:0] grayscale16;
-	logic [7:0] grayscale;
-	always_ff @(posedge VGA_CLK) begin
-		grayscale16 = VGA_OUT[27:20] / 4 + VGA_OUT[19:12] / 8 * 5  + VGA_OUT[11:4] / 10;
-		grayscale = grayscale16[7:0];
+	// simple processing
+	always_comb begin
+		if (delay[0][27:20] > prev_delay0[27:20])
+			delta_R = delay[0][27:20] - prev_delay0[27:20];
+		else
+			delta_R = prev_delay0[19:12] - delay[0][19:12];
+		if (delay[0][19:12] > prev_delay0[19:12])
+			delta_G = delay[0][19:12] - prev_delay0[19:12];
+		else
+			delta_G = prev_delay0[11:4] - delay[0][11:4];
+		if (delay[0][11:4] > prev_delay0[11:4])
+			delta_B = delay[0][11:4] - prev_delay0[11:4];
+		else
+			delta_B = prev_delay0[11:4] - delay[0][11:4];
+		 
+		grayscale = prev_delay0[27:20] / 4 + prev_delay0[19:12] / 8 * 5  + prev_delay0[11:4] / 10;
 	end
 	
+	// convolutions
 	logic signed [15:0] buffer_3 [2:0][2:0];
+	logic signed [15:0] buffer_3_buffered [2:0][2:0];
 	logic signed [15:0] identity_kernel [2:0][2:0];
-	logic signed [15:0] identity_out;
+	assign identity_kernel[0][0] = 0;
+	assign identity_kernel[0][1] = 0;
+	assign identity_kernel[0][2] = 0;
+	assign identity_kernel[1][0] = 0;
+	assign identity_kernel[1][2] = 0;
+	assign identity_kernel[2][0] = 0;
+	assign identity_kernel[2][1] = 0;
+	assign identity_kernel[2][2] = 0;
+
+	assign identity_kernel[1][1] = 1;
+	logic signed [15:0] identity_out, identity_out_buffered;
 	
 	// sliding window operators
-	sliding_window #(3, 640, 16) kernel_in_3 (.clk(VGA_CLK), .pixel_in(grayscale16), .buffer(buffer_3));
-	kernel_convolution #(3, 16) identity_convolve(.buffer_in(buffer_3), .kernel_in(identity_kernel), .ans(identity_out));
+	sliding_window #(3, WIDTH, 16) kernel_in_3 (.reset(0), .clk(VGA_CLK), .pixel_in(grayscale16), .buffer(buffer_3));
+	kernel_convolution #(3, 16) identity_convolve(.clk(VGA_CLK), .buffer_in(buffer_3_buffered), .kernel_in(identity_kernel), .ans(identity_out));
 	
 	always_ff @(posedge VGA_CLK) begin
-		VGA_OUT <= VGA_BUFFER;
-		if (SW[0]) VGA_OUT[27:4] = {grayscale, grayscale, grayscale};
-		if (SW[1]) VGA_OUT[27:4] = {identity_out[7:0], identity_out[7:0], identity_out[7:0]};
+		grayscale16 <= {8'b0, grayscale};
+		buffer_3_buffered <= buffer_3;
+		identity_out_buffered <= identity_out;
+		delay[1] <= delay[0];
+		if (SW[0]) delay[1][27:20] = delta_R;
+		else if (SW[1]) delay[1][19:12] = delta_G;
+		else if (SW[2]) delay[1][11:4] = delta_B;
+		else if (SW[3]) delay[1][27:4] = {grayscale, grayscale, grayscale};
+		else if (SW[4]) delay[1][27:4] = {identity_out_buffered[7:0], identity_out_buffered[7:0], identity_out_buffered[7:0]};
+		else if (SW[5]) delay[1][27:4] = {buffer_3_buffered[0][0][7:0], buffer_3_buffered[0][0][7:0], buffer_3_buffered[0][0][7:0]};
 	end
 	
-	// set HEXES later
 	assign HEX0 = '1;
 	assign HEX1 = '1;
 	assign HEX2 = '1;
@@ -93,52 +120,56 @@ output logic signed [WORD_SIZE - 1:0] buffer [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1
 	assign HEX4 = '1;
 	assign HEX5 = '1;
 	assign LEDR = '0;
+
 endmodule
 
 
-
-/*
 module Filter_testbench();
-	logic		  [7:0]		oVGA_G,
-	logic		       		oVGA_HS,
-	logic		     [6:0]		HEX2,
-	logic		     [7:0]		iVGA_G, // Green
-	logic		       		oVGA_BLANK_N,
-	logic		  [7:0]		oVGA_B,
-	logic		          		iVGA_HS,
-	logic		  [7:0]		oVGA_R,
-	logic		     [6:0]		HEX3,
-	logic		     [7:0]		iVGA_R, // Red
-	logic		     [6:0]		HEX1,
-	logic		     [6:0]		HEX0,
-	logic		       		oVGA_VS,
-	logic		       		oVGA_SYNC_N,
-	logic			     [8:0]		SW   // SW[9] reserved for auto-focus mode.
-	logic		          		iVGA_SYNC_N,
-	logic		          		VGA_CLK, // 25 MHz clock
-	logic		          		iVGA_BLANK_N,
-	logic		     [7:0]		iVGA_B, // Blue
-	logic		     [9:0]		LEDR,
-	logic		          		iVGA_VS,
-	logic		     [6:0]		HEX4,
+	logic		  [7:0]		oVGA_G;
+	logic		       		oVGA_HS;
+	logic		     [6:0]		HEX2;
+	logic		     [7:0]		iVGA_G; // Green
+	logic		       		oVGA_BLANK_N;
+	logic		  [7:0]		oVGA_B;
+	logic		          		iVGA_HS;
+	logic		  [7:0]		oVGA_R;
+	logic		     [6:0]		HEX3;
+	logic		     [7:0]		iVGA_R; // Red
+	logic		     [6:0]		HEX1;
+	logic		     [6:0]		HEX0;
+	logic		       		oVGA_VS;
+	logic		       		oVGA_SYNC_N;
+	logic			     [8:0]		SW;   // SW[9] reserved for auto-focus mode.
+	logic		          		iVGA_SYNC_N;
+	logic		          		VGA_CLK; // 25 MHz clock
+	logic		          		iVGA_BLANK_N;
+	logic		     [7:0]		iVGA_B; // Blue
+	logic		     [9:0]		LEDR;
+	logic		          		iVGA_VS;
+	logic		     [6:0]		HEX4;
+	logic clk;
 	// *** User s ***
 	// *** Board s ***
-	logic		     [6:0]		HEX5,
-	logic 		     [1:0]		KEY, // Key[2] reserved for reset, key[3] for auto-focus.
+	logic		     [6:0]		HEX5;
+	logic 		     [1:0]		KEY; // Key[2] reserved for reset, key[3] for auto-focus.
 
 	// Set up the clock.
-	parameter PERIOD = 100; // period = length of clock
+	parameter PERIOD = 40; // period = length of clock
 	initial begin
-		clk <= 0;
+		clk = 0;
 		forever #(PERIOD/2) clk = ~clk;
 	end
 
 	Filter dut (.*); // ".*" Implicitly connects all ports to variables with matching names
 
+	assign VGA_CLK = clk;
+	
+	integer i;
 	initial begin
+		iVGA_VS <= 0; iVGA_BLANK_N <= 0; iVGA_SYNC_N <= 0; iVGA_R <= 100; iVGA_G <= 100; iVGA_B <=100;
 
-		repeat (10) @(posedge clk);
+		for(i = 0; i < 200; i++) @(posedge clk);
 		$stop; // End simulation
 	end
 endmodule
-*/
+

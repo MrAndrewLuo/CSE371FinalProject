@@ -4,6 +4,8 @@ module kernel_convolution
 	parameter KERNEL_SIZE = 3,
 	parameter WORD_SIZE = 8)
 	(
+	input logic clk,
+	
 	// rgb with (WORD_SIZE - 1) bits each (signed integer)
 	input logic signed [WORD_SIZE- 1:0] buffer_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0], 
@@ -24,7 +26,7 @@ module kernel_convolution
 	generate
 		for (row = 0; row < KERNEL_SIZE; row += 1) begin: gen_row1
 			for (col = 0; col < KERNEL_SIZE; col += 1) begin: gen_col2
-				assign sum[row][col] = buffer_in[row][col] * kernel_in[row][col];
+				always_ff @(posedge clk) sum[row][col] <= buffer_in[row][col] * kernel_in[row][col];
 			end
 		end
 	endgenerate
@@ -40,11 +42,19 @@ module kernel_convolution
 		end
 	endgenerate
 	
+	logic signed [(WORD_SIZE - 1):0] accumulator_col_buffered
+	[KERNEL_SIZE - 1:0];
+	generate
+		for (row = 0; row < KERNEL_SIZE; row += 1) begin: gen_col_buff
+			always_ff @(posedge clk) accumulator_col_buffered[row] = accumulator_col[row][KERNEL_SIZE - 1];
+		end
+	endgenerate
+	
 	logic signed [(WORD_SIZE - 1):0] accumulator_row [KERNEL_SIZE - 1:0];
 	generate
-		assign accumulator_row[0] = accumulator_col[0][KERNEL_SIZE - 1];
+		assign accumulator_row[0] = accumulator_col_buffered[0];
 		for (row = 1; row < KERNEL_SIZE; row += 1) begin: gen_row3
-			assign accumulator_row[row] = accumulator_row[row - 1] + accumulator_col[row][KERNEL_SIZE - 1];
+			assign accumulator_row[row] = accumulator_row[row - 1] + accumulator_col_buffered[row];
 		end
 	endgenerate
 	
@@ -91,7 +101,16 @@ module kernel_convolution_testbench ();
 	initial begin
 		
 		@(posedge clk); @(posedge clk); @(posedge clk);
-				
+		@(posedge clk); @(posedge clk); @(posedge clk);
+		@(posedge clk); @(posedge clk); @(posedge clk);
+		@(posedge clk); @(posedge clk); @(posedge clk);
+		@(posedge clk); @(posedge clk); @(posedge clk);
+		@(posedge clk); @(posedge clk); @(posedge clk);
+		@(posedge clk); @(posedge clk); @(posedge clk);
+		@(posedge clk); @(posedge clk); @(posedge clk);
+		@(posedge clk); @(posedge clk); @(posedge clk);
+		@(posedge clk); @(posedge clk); @(posedge clk);
+
 		$stop;
 	end //initial
 endmodule
