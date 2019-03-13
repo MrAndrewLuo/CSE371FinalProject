@@ -68,3 +68,29 @@ convolve_buffer_controlpath
 	end
 
 endmodule
+
+
+/*
+module convolve_buffer_testbench();
+	logic signed [47:0] buffer_in [HEIGHT-1:0][WIDTH-1:0],
+	logic signed [47:0] buffer_out [HEIGHT-1:0][WIDTH-1:0]
+	logic done,
+	logic signed [47:0] kernel_in [KERNEL_SIZE-1:0][KERNEL_SIZE-1:0],
+	logic clk, reset, enable,
+
+	// Set up the clock.
+	parameter PERIOD = 100; // period = length of clock
+	initial begin
+		clk <= 0;
+		forever #(PERIOD/2) clk = ~clk;
+	end
+
+	convolve_buffer dut (.*); // ".*" Implicitly connects all ports to variables with matching names
+
+	initial begin
+
+		repeat (10) @(posedge clk);
+		$stop; // End simulation
+	end
+endmodule
+*/

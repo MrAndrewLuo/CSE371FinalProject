@@ -146,3 +146,29 @@ module kernel_convolution_test_bench ();
 	end //initial
 endmodule
 
+
+
+/*
+module kernel_convolution_testbench();
+	logic signed [47:0] buffer_in
+	logic signed [31:0] ans
+	//  signed
+	logic clk, reset,
+	logic signed [47:0] kernel_in
+
+	// Set up the clock.
+	parameter PERIOD = 100; // period = length of clock
+	initial begin
+		clk <= 0;
+		forever #(PERIOD/2) clk = ~clk;
+	end
+
+	kernel_convolution dut (.*); // ".*" Implicitly connects all ports to variables with matching names
+
+	initial begin
+
+		repeat (10) @(posedge clk);
+		$stop; // End simulation
+	end
+endmodule
+*/
