@@ -99,3 +99,26 @@ module sliding_window_testbench_runner();
 	sliding_window_testbench #(5, 10, 100, 8) s3();
 
 endmodule
+
+/*
+module sliding_window_testbench();
+	logic clk, reset,
+	logic signed [WORD_SIZE - 1:0] buffer [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0]
+	logic signed [WORD_SIZE - 1:0] pixel_in,
+
+	// Set up the clock.
+	parameter PERIOD = 100; // period = length of clock
+	initial begin
+		clk <= 0;
+		forever #(PERIOD/2) clk = ~clk;
+	end
+
+	sliding_window dut (.*); // ".*" Implicitly connects all ports to variables with matching names
+
+	initial begin
+
+		repeat (10) @(posedge clk);
+		$stop; // End simulation
+	end
+endmodule
+*/

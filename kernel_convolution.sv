@@ -1,46 +1,30 @@
 // with saturation clipping
 module kernel_convolution
-	#(parameter KERNEL_SIZE = 3
-				WORD_SIZE = 16)
+	#(
+	parameter KERNEL_SIZE = 3,
+	parameter WORD_SIZE = 16)
 	(
-	input logic clk, reset,
-
 	// rgb with (WORD_SIZE - 1) bits each (signed integer)
-	input logic signed [((WORD_SIZE * 3) - 1):0] buffer_in
+	input logic signed [WORD_SIZE- 1:0] buffer_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0], 
 		
 	// assume (WORD_SIZE - 1) bit signed integer for channel
 	// kernel dimensions are w x h x 3
-	input logic signed [((WORD_SIZE * 3) - 1):0] kernel_in
+	input logic signed [WORD_SIZE - 1:0] kernel_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0] ,
 		
 	// output signed
 	output logic signed [(WORD_SIZE - 1):0] ans 
 	);	
 	
-	// loading kernel
-	logic signed [((WORD_SIZE * 3) - 1):0] kernel [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
-	logic signed [((WORD_SIZE * 3) - 1):0] buffer[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
-	always_ff @(posedge clk) begin
-		if (reset) begin
-			kernel <= kernel_in;
-			buffer <= buffer_in;
-		end
-	end
-	
 	// multiply and accumulate across rows and columns
-	logic signed [(WORD_SIZE - 1):0] sum
+	logic signed [WORD_SIZE - 1:0] sum
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 	genvar row, col;
 	generate
 		for (row = 0; row < KERNEL_SIZE; row += 1) begin: gen_row1
 			for (col = 0; col < KERNEL_SIZE; col += 1) begin: gen_col2
-				logic signed [(WORD_SIZE - 1):0] br, bg, bb;
-				logic signed [(WORD_SIZE - 1):0] kr, kg, kb;
-				assign {br, bg, bb} = buffer[row][col];
-				assign {kr, kg, kb} = kernel[row][col];
-				
-				assign sum[row][col] = br * kr + bg * kg + bb * kb;
+				assign sum[row][col] = buffer_in[row][col] * kernel_in[row][col];
 			end
 		end
 	endgenerate
@@ -64,16 +48,15 @@ module kernel_convolution
 		end
 	endgenerate
 	
-	always_ff @(posedge clk) begin
-		if (!reset) ans <= accumulator_row[KERNEL_SIZE - 1];
-	end
+	assign ans = accumulator_row[KERNEL_SIZE - 1];
 	
 endmodule
 
-module kernel_convolution_test_bench ();
+module kernel_convolution_testbench ();
 	localparam KERNEL_SIZE = 5;
+	localparam WORD_SIZE = 8;
 
-	logic clk, reset;
+	logic clk;
 
 	// rgb with (WORD_SIZE - 1) bits each (signed integer)
 	logic signed [((WORD_SIZE * 3) - 1):0] buffer_in
@@ -103,7 +86,7 @@ module kernel_convolution_test_bench ();
 	// output signed
 	logic signed [(WORD_SIZE - 1):0] ans;
 	
-	kernel_convolution #(KERNEL_SIZE) dut (.*);
+	kernel_convolution #(KERNEL_SIZE, WORD_SIZE) dut (.*);
 	
 	// Set up the clock.
 	parameter CLOCK_PERIOD=100;
@@ -118,58 +101,18 @@ module kernel_convolution_test_bench ();
 		for (i = 0; i < KERNEL_SIZE; i++) begin: genrow
 				for (j = 0; j < KERNEL_SIZE; j++) begin: gencol
 					reg signed [(WORD_SIZE - 1):0] br, bg, bb, kr, kg, kb;
-					assign br = i * j; 
-					assign bg = i + j; 
-					assign bb = j;
-					assign kr = 1;
-					assign kg = -1;
-					assign kb = 2;
+					assign b = i * j; 
+					assign k = 1;
 					
-					assign buffer_in[i][j] = {br, bg, bb};
-					assign kernel_in[i][j] = {kr, kg, kb};
-					
-					assign r_buffer_in[i][j] = br;
-					assign g_buffer_in[i][j] = bg;
-					assign b_buffer_in[i][j] = bb;
-
-					assign r_kernel_in[i][j] = kr;
-					assign g_kernel_in[i][j] = kg;
-					assign b_kernel_in[i][j] = kb;
+					assign buffer_in[i][j] = b;
+					assign kernel_in[i][j] = k;
 				end
 		end
 	endgenerate
 	initial begin
 		
-		reset <= 1; @(posedge clk);
-		reset <= 0; @(posedge clk); @(posedge clk);
+		@(posedge clk); @(posedge clk); @(posedge clk);
 				
 		$stop;
 	end //initial
 endmodule
-
-
-
-/*
-module kernel_convolution_testbench();
-	logic signed [((WORD_SIZE * 3) - 1):0] buffer_in
-	logic signed [(WORD_SIZE - 1):0] ans
-	//  signed
-	logic clk, reset,
-	logic signed [((WORD_SIZE * 3) - 1):0] kernel_in
-
-	// Set up the clock.
-	parameter PERIOD = 100; // period = length of clock
-	initial begin
-		clk <= 0;
-		forever #(PERIOD/2) clk = ~clk;
-	end
-
-	kernel_convolution dut (.*); // ".*" Implicitly connects all ports to variables with matching names
-
-	initial begin
-
-		repeat (10) @(posedge clk);
-		$stop; // End simulation
-	end
-endmodule
-*/
