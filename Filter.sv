@@ -92,25 +92,61 @@ module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 	assign identity_kernel[2][0] = 0;
 	assign identity_kernel[2][1] = 0;
 	assign identity_kernel[2][2] = 0;
-
 	assign identity_kernel[1][1] = 1;
 	logic signed [15:0] identity_out, identity_out_buffered;
 	
+	logic signed [15:0] horz_edge_kernel [2:0][2:0];
+	assign horz_edge_kernel[0][0] = 1;
+	assign horz_edge_kernel[0][1] = 0;
+	assign horz_edge_kernel[0][2] = -1;
+	assign horz_edge_kernel[1][0] = 1;
+	assign horz_edge_kernel[1][1] = 0;
+	assign horz_edge_kernel[1][2] = -1;
+	assign horz_edge_kernel[2][0] = 1;
+	assign horz_edge_kernel[2][1] = 0;
+	assign horz_edge_kernel[2][2] = -1;
+	logic signed [15:0] horz_edge_out, horz_edge_out_buffered;
+
+	logic signed [15:0] vert_edge_kernel [2:0][2:0];
+	assign vert_edge_kernel[0][0] = 1;
+	assign vert_edge_kernel[0][1] = 1;
+	assign vert_edge_kernel[0][2] = 1;
+	assign vert_edge_kernel[1][0] = 0;
+	assign vert_edge_kernel[1][1] = 0;
+	assign vert_edge_kernel[1][2] = 0;
+	assign vert_edge_kernel[2][0] = -1;
+	assign vert_edge_kernel[2][1] = -1;
+	assign vert_edge_kernel[2][2] = -1;
+	logic signed [15:0] vert_edge_out, vert_edge_out_buffered;
+	
 	// sliding window operators
 	sliding_window #(3, WIDTH, 16) kernel_in_3 (.reset(0), .clk(VGA_CLK), .pixel_in(grayscale16), .buffer(buffer_3));
+	
+	// kernels for 3x3 kernels
 	kernel_convolution #(3, 16) identity_convolve(.clk(VGA_CLK), .buffer_in(buffer_3_buffered), .kernel_in(identity_kernel), .ans(identity_out));
+	
+	// line filters
+	// TODO: add blur to grayscale image before gaussian
+	kernel_convolution #(3, 16) horz_edge_convolve(.clk(VGA_CLK), .buffer_in(buffer_3_buffered), .kernel_in(horz_edge_kernel), .ans(horz_edge_out));	
+	kernel_convolution #(3, 16) vert_edge_convolve(.clk(VGA_CLK), .buffer_in(buffer_3_buffered), .kernel_in(vert_edge_kernel), .ans(vert_edge_out));
 	
 	always_ff @(posedge VGA_CLK) begin
 		grayscale16 <= {8'b0, grayscale};
 		buffer_3_buffered <= buffer_3;
 		identity_out_buffered <= identity_out;
+		
+		if (vert_edge_out > 0) vert_edge_out_buffered <= vert_edge_out; else if (vert_edge_out > 255) vert_edge_out_buffered <= 255; else vert_edge_out_buffered <= 0;
+		if (horz_edge_out > 0) horz_edge_out_buffered <= horz_edge_out; else if (horz_edge_out > 255) horz_edge_out_buffered <= 255; else horz_edge_out_buffered <= 0;
+		
 		delay[1] <= delay[0];
-		if (SW[0]) delay[1][27:20] = delta_R;
-		else if (SW[1]) delay[1][19:12] = delta_G;
-		else if (SW[2]) delay[1][11:4] = delta_B;
-		else if (SW[3]) delay[1][27:4] = {grayscale, grayscale, grayscale};
-		else if (SW[4]) delay[1][27:4] = {identity_out_buffered[7:0], identity_out_buffered[7:0], identity_out_buffered[7:0]};
-		else if (SW[5]) delay[1][27:4] = {buffer_3_buffered[0][0][7:0], buffer_3_buffered[0][0][7:0], buffer_3_buffered[0][0][7:0]};
+		if (SW[0]) delay[1][27:20] <= delta_R;
+		else if (SW[1]) delay[1][19:12] <= delta_G;
+		else if (SW[2]) delay[1][11:4] <= delta_B;
+		else if (SW[3]) delay[1][27:4] <= {grayscale, grayscale, grayscale};
+		else if (SW[4]) delay[1][27:4] <= {identity_out_buffered[7:0], identity_out_buffered[7:0], identity_out_buffered[7:0]};
+		else if (SW[5]) delay[1][27:4] <= {vert_edge_out_buffered[7:0], vert_edge_out_buffered[7:0], vert_edge_out_buffered[7:0]};
+		else if (SW[6]) delay[1][27:4] <= {horz_edge_out_buffered[7:0], horz_edge_out_buffered[7:0], horz_edge_out_buffered[7:0]};
+
 	end
 	
 	assign HEX0 = '1;
