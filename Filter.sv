@@ -287,3 +287,50 @@ module Filter_testbench ();
 	end
 	
 endmodule
+
+
+/*
+module Filter_testbench();
+	logic		  [7:0]		oVGA_G,
+	logic		          		iVGA_HS,
+	logic 		     [1:0]		KEY, // Key[2] reserved for reset, key[3] for auto-focus.
+	logic		     [6:0]		HEX3,
+	logic		       		oVGA_HS,
+	logic			     [8:0]		SW   // SW[9] reserved for auto-focus mode.
+	logic		     [9:0]		LEDR,
+	logic		  [7:0]		oVGA_B,
+	logic		       		oVGA_SYNC_N,
+	logic		     [6:0]		HEX4,
+	logic		          		iVGA_BLANK_N,
+	logic		     [7:0]		iVGA_R, // Red
+	logic		     [6:0]		HEX5,
+	logic		          		VGA_CLK, // 25 MHz clock
+	logic		       		oVGA_BLANK_N,
+	logic		          		iVGA_VS,
+	logic		     [7:0]		iVGA_G, // Green
+	logic		     [6:0]		HEX0,
+	logic		     [6:0]		HEX1,
+	logic		     [7:0]		iVGA_B, // Blue
+	logic		  [7:0]		oVGA_R,
+	logic		          		iVGA_SYNC_N,
+	// *** Board s ***
+	// *** User s ***
+	logic		     [6:0]		HEX2,
+	logic		       		oVGA_VS,
+
+	// Set up the clock.
+	parameter PERIOD = 100; // period = length of clock
+	initial begin
+		clk <= 0;
+		forever #(PERIOD/2) clk = ~clk;
+	end
+
+	Filter dut (.*); // ".*" Implicitly connects all ports to variables with matching names
+
+	initial begin
+
+		repeat (10) @(posedge clk);
+		$stop; // End simulation
+	end
+endmodule
+*/

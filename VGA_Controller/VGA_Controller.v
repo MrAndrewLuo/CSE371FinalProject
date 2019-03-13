@@ -13,8 +13,9 @@ module	VGA_Controller(
       output				oVGA_V_SYNC,
       output				oVGA_SYNC,
       output				oVGA_BLANK,
-      output	reg		[12:0]		H_Cont,
-      output	reg		[12:0]		V_Cont						
+      output	reg		[12:0]  H_Cont,
+      output	reg		[12:0]  V_Cont,
+		output            [12:0]  x, y
 		);
 
 //=======================================================
@@ -29,6 +30,8 @@ parameter V_MARK   = 9; //MAX 9
 // Structural coding
 //=======================================================
 
+assign x = H_Cont - H_BLANK;
+assign y = V_Cont - V_BLANK;
 																  
 //---h 								  
 always@(posedge iCLK or negedge iRST_N)

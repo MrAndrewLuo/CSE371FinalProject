@@ -46,6 +46,7 @@ module Sdram_Control (
 		WR1_LENGTH,
 		WR1_LOAD,
 		WR1_CLK,
+		WR1_ALMOST_DONE,
 		//	FIFO Write Side 2
     WR2_DATA,
 		WR2,
@@ -94,39 +95,42 @@ module Sdram_Control (
 //=======================================================
 //	HOST Side
 input                           RESET_N;                //System Reset
-input 							            CLK;
+input 							CLK;
 //	FIFO Write Side 1
-input  [`DSIZE-1:0]           WR1_DATA;               //Data Input
-input							              WR1;					          //Write Request
-input	  [`ASIZE-1:0]			      WR1_ADDR;				        //Write Start Address
-input	  [`ASIZE-1:0]			      WR1_MAX_ADDR;			      //Write Max Address
-input	         [10:0]				  	WR1_LENGTH;     				//Write Length
-input							              WR1_LOAD;			         	//Write FIFO Clear
-input							              WR1_CLK;				        //Write FIFO Clock
+input  [`DSIZE-1:0]           	WR1_DATA;               //Data Input
+input							WR1;					//Write Request
+input	  [`ASIZE-1:0]			WR1_ADDR;				//Write Start Address
+input	  [`ASIZE-1:0]			WR1_MAX_ADDR;			//Write Max Address
+input	        [10:0]			WR1_LENGTH;     		//Write Length
+input							WR1_LOAD;			    //Write FIFO Clear
+input							WR1_CLK;				//Write FIFO Clock
+output 							WR1_ALMOST_DONE;	    //Flag to see when almost done writing
 //	FIFO Write Side 2
-input  [`DSIZE-1:0]           WR2_DATA;               //Data Input
-input							              WR2;					          //Write Request
-input	  [`ASIZE-1:0]			      WR2_ADDR;				        //Write Start Address
-input	  [`ASIZE-1:0]			      WR2_MAX_ADDR;			      //Write Max Address
-input	         [10:0]				  	WR2_LENGTH;     				//Write Length
-input							              WR2_LOAD;			         	//Write FIFO Clear
-input							              WR2_CLK;				        //Write FIFO Clock
+input  [`DSIZE-1:0]           	WR2_DATA;               //Data Input
+input							WR2;					//Write Request
+input	  [`ASIZE-1:0]			WR2_ADDR;				//Write Start Address
+input	  [`ASIZE-1:0]			WR2_MAX_ADDR;			//Write Max Address
+input	        [10:0]			WR2_LENGTH;     		//Write Length
+input							WR2_LOAD;			    //Write FIFO Clear
+input							WR2_CLK;				//Write FIFO Clock
+
 //	FIFO Read Side 1
-output [`DSIZE-1:0]           RD1_DATA;               //Data Output
-input							              RD1;					          //Read Request
-input	  [`ASIZE-1:0]			      RD1_ADDR;				        //Read Start Address
-input	  [`ASIZE-1:0]			      RD1_MAX_ADDR;			      //Read Max Address
-input	         [10:0]					  RD1_LENGTH;				      //Read Length
-input						              	RD1_LOAD;				        //Read FIFO Clear
-input							              RD1_CLK;				        //Read FIFO Clock
+output [`DSIZE-1:0]           	RD1_DATA;               //Data Output
+input							RD1;					//Read Request
+input  [`ASIZE-1:0]			    RD1_ADDR;				//Read Start Address
+input  [`ASIZE-1:0]			    RD1_MAX_ADDR;			//Read Max Address
+input	     [10:0]		   	    RD1_LENGTH;				//Read Length
+input						    RD1_LOAD;				//Read FIFO Clear
+input							RD1_CLK;				//Read FIFO Clock
+
 //	FIFO Read Side 2
-output [`DSIZE-1:0]           RD2_DATA;               //Data Output
-input							              RD2;					          //Read Request
-input	  [`ASIZE-1:0]			      RD2_ADDR;				        //Read Start Address
-input	  [`ASIZE-1:0]			      RD2_MAX_ADDR;			      //Read Max Address
-input	         [10:0]					  RD2_LENGTH;				      //Read Length
-input						              	RD2_LOAD;				        //Read FIFO Clear
-input							              RD2_CLK;				        //Read FIFO Clock
+output [`DSIZE-1:0]           	RD2_DATA;               //Data Output
+input							RD2;					//Read Request
+input  [`ASIZE-1:0]			    RD2_ADDR;				//Read Start Address
+input  [`ASIZE-1:0]			    RD2_MAX_ADDR;			//Read Max Address
+input	     [10:0]			    RD2_LENGTH;				//Read Length
+input						    RD2_LOAD;				//Read FIFO Clear
+input							RD2_CLK;				//Read FIFO Clock
 //	SDRAM Side
 output        [11:0]            SA;                     //SDRAM address output
 output         [1:0]            BA;                     //SDRAM bank address
@@ -144,32 +148,32 @@ output [`DSIZE/8-1:0]           DQM;                    //SDRAM data mask lines
 //  Signal Declarations
 //=======================================================
 //	Controller
-reg		[`ASIZE-1:0]			        mADDR;					        //Internal address
-reg		       [10:0]			        mLENGTH;				        //Internal length
-reg		[`ASIZE-1:0]			        rWR1_ADDR;			        //Register write address				
+reg		[`ASIZE-1:0]			        mADDR;					//Internal address
+reg		      [10:0]			        mLENGTH;				//Internal length
+reg		[`ASIZE-1:0]			        rWR1_ADDR;			    //Register write address				
 reg		[`ASIZE-1:0]			        rWR1_MAX_ADDR;	        //Register max write address				
-reg		       [10:0]		 	        rWR1_LENGTH;		        //Register write length
-reg		[`ASIZE-1:0]			        rWR2_ADDR;			        //Register write address				
+reg		      [10:0]		 	        rWR1_LENGTH;		    //Register write length
+reg		[`ASIZE-1:0]			        rWR2_ADDR;			    //Register write address				
 reg		[`ASIZE-1:0]			        rWR2_MAX_ADDR;	        //Register max write address				
-reg		       [10:0]			        rWR2_LENGTH;		        //Register write length
-reg		[`ASIZE-1:0]			        rRD1_ADDR;			        //Register read address
+reg		      [10:0]			        rWR2_LENGTH;		    //Register write length
+reg		[`ASIZE-1:0]			        rRD1_ADDR;			    //Register read address
 reg		[`ASIZE-1:0]			        rRD1_MAX_ADDR;	        //Register max read address
-reg		       [10:0]			        rRD1_LENGTH;		        //Register read length
-reg		[`ASIZE-1:0]			        rRD2_ADDR;			        //Register read address
+reg		      [10:0]			        rRD1_LENGTH;		    //Register read length
+reg		[`ASIZE-1:0]			        rRD2_ADDR;			    //Register read address
 reg		[`ASIZE-1:0]			        rRD2_MAX_ADDR;	        //Register max read address
-reg		       [10:0]			        rRD2_LENGTH;		        //Register read length
-reg		       [1:0]			        WR_MASK;				        //Write port active mask
-reg		       [1:0]			        RD_MASK;				        //Read port active mask
-reg								              mWR_DONE;				        //Flag write done, 1 pulse SDR_CLK
-reg								              mRD_DONE;				        //Flag read done, 1 pulse SDR_CLK
-reg								              mWR,Pre_WR;			        //Internal WR edge capture
-reg							      	        mRD,Pre_RD;			        //Internal RD edge capture
-reg 	          [9:0] 		          ST;						          //Controller status
-reg		       [1:0] 			        CMD;					          //Controller command
-reg								              PM_STOP;				        //Flag page mode stop
-reg								              PM_DONE;				        //Flag page mode done
-reg								              Read;					          //Flag read active
-reg								              Write;					        //Flag write active
+reg		      [10:0]			        rRD2_LENGTH;		    //Register read length
+reg		       [1:0]			        WR_MASK;				//Write port active mask
+reg		       [1:0]			        RD_MASK;				//Read port active mask
+reg								        mWR_DONE;				//Flag write done, 1 pulse SDR_CLK
+reg								        mRD_DONE;				//Flag read done, 1 pulse SDR_CLK
+reg								        mWR,Pre_WR;			    //Internal WR edge capture
+reg							      	    mRD,Pre_RD;			    //Internal RD edge capture
+reg 	          [9:0] 		        ST;						//Controller status
+reg		       [1:0] 			        CMD;					//Controller command
+reg								        PM_STOP;				//Flag page mode stop
+reg								        PM_DONE;				//Flag page mode done
+reg								        Read;					//Flag read active
+reg								        Write;					//Flag write active
 reg	   [`DSIZE-1:0]             mDATAOUT;               //Controller Data output 
 wire   [`DSIZE-1:0]             mDATAIN;                //Controller Data input
 wire   [`DSIZE-1:0]             mDATAIN1;               //Controller Data input 1
@@ -422,6 +426,11 @@ begin
 	end
 end
 
+always @* begin 
+	if (rWR1_ADDR == (rWR1_MAX_ADDR - rWR1_LENGTH)) WR1_ALMOST_DONE = 1; 
+	else WR1_ALMOST_DONE = 0;
+end
+
 //	Internal Address & Length Control
 always@(posedge CLK or negedge RESET_N)
 	if (!RESET_N)
@@ -445,10 +454,15 @@ always@(posedge CLK or negedge RESET_N)
 		//	Write Side 1
     if (mWR_DONE&&WR_MASK[0])
 		begin
-			if(rWR1_ADDR < rWR1_MAX_ADDR-rWR1_LENGTH)
-				rWR1_ADDR	<= rWR1_ADDR+rWR1_LENGTH;
-			else
+			if(rWR1_ADDR < rWR1_MAX_ADDR - rWR1_LENGTH)
+				rWR1_ADDR <= rWR1_ADDR + rWR1_LENGTH;
+				//if (rWR1_ADDR >= rWR1_MAX_ADDR - rWR1_LENGTH - 256) WR1_ALMOST_DONE <= 1; 
+			else begin // Sets start and end of write
+				//WR1_ALMOST_DONE <= 0;
 				rWR1_ADDR	<= WR1_ADDR;
+				rWR1_MAX_ADDR <= WR1_MAX_ADDR;
+			end
+				
 		end
 		//	Write Side 2
 	//	if (mWR_DONE&&WR_MASK[1])
@@ -463,8 +477,11 @@ always@(posedge CLK or negedge RESET_N)
 		begin
 			if(rRD1_ADDR<rRD1_MAX_ADDR-rRD1_LENGTH)
 				rRD1_ADDR	<=	rRD1_ADDR+rRD1_LENGTH;
-			else
+			else begin // Sets start and end of read
 				rRD1_ADDR	<=	RD1_ADDR;
+				rRD1_MAX_ADDR <= RD1_MAX_ADDR;
+			end
+				
 		end
 		////	Read Side 2
 		//if (mRD_DONE&&RD_MASK[1])

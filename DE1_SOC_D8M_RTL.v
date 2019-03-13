@@ -139,7 +139,7 @@ module DE1_SOC_D8M_RTL(
 					.oVGA_HS(post_VGA_HS), .oVGA_VS(post_VGA_VS),
 					.oVGA_SYNC_N(post_VGA_SYNC_N), .oVGA_BLANK_N(post_VGA_BLANK_N),
 					.HEX0(HEX0), .HEX1(HEX1), .HEX2(HEX2), .HEX3(HEX3), .HEX4(HEX4), .HEX5(HEX5),
-					.LEDR(KEDR), .KEY(KEY[1:0]), .SW(SW[8:0]));
+					.LEDR(KEDR), .KEY(KEY[1:0]), .SW(SW[7:0]));
 					
 	assign VGA_BLANK_N = post_VGA_BLANK_N;
 	assign VGA_B = post_VGA_B;
@@ -154,7 +154,7 @@ module DE1_SOC_D8M_RTL(
 //=============================================================================
 
 
-wire	[15:0]SDRAM_RD_DATA;
+wire	[15:0]	SDRAM_RD_DATA;
 wire			DLY_RST_0;
 wire			DLY_RST_1;
 wire			DLY_RST_2;
@@ -261,7 +261,17 @@ sdram_pll u6(
 		               .c1    ( DRAM_CLK ),       //100MHZ   -90 degree
 		               .c0    ( SDRAM_CTRL_CLK )  //100MHZ     0 degree 							
 		              
-	               );		
+	               );
+//------CAPTURE SINGLE IMAGE --
+wire WR_ALMOST_DONE;
+wire [22:0] wrAddr, maxWr;			
+Capture CaptureMode (.clk(SDRAM_CTRL_CLK),
+							.reset(KEY[2]),
+							.s(SW[8]),
+							.almostDoneWr(WR_ALMOST_DONE),
+							.wrAddr,
+							.maxWr
+						  );
 						
 //------SDRAM CONTROLLER --
 Sdram_Control	   u7	(	//	HOST Side						
@@ -271,21 +281,22 @@ Sdram_Control	   u7	(	//	HOST Side
 							.WR1_DATA    ( LUT_MIPI_PIXEL_D[9:0] ),
 							.WR1         ( LUT_MIPI_PIXEL_HS & LUT_MIPI_PIXEL_VS ) ,
 							
-							.WR1_ADDR    ( 0 ),
-                     .WR1_MAX_ADDR( 640*480 ),
+							.WR1_ADDR    ( wrAddr ),
+                     .WR1_MAX_ADDR( maxWr ),
 						   .WR1_LENGTH  ( 256 ) , 
 		               .WR1_LOAD    ( !DLY_RST_0 ),
 							.WR1_CLK     ( MIPI_PIXEL_CLK_),
-
+							.WR1_ALMOST_DONE ( WR_ALMOST_DONE ),
+							
                      //	FIFO Read Side 1
 						   .RD1_DATA    ( SDRAM_RD_DATA[9:0] ),
 				        	.RD1         ( READ_Request ),
-				        	.RD1_ADDR    (0 ),
+				        	.RD1_ADDR    ( 0 ),
                      .RD1_MAX_ADDR( 640*480 ),
-							.RD1_LENGTH  ( 256  ),
+							.RD1_LENGTH  ( 256 ),
 							.RD1_LOAD    ( !DLY_RST_1 ),
 							.RD1_CLK     ( VGA_CLK ),
-											
+							
 							//	SDRAM Side
 						   .SA          ( DRAM_ADDR ),
 							.BA          ( DRAM_BA ),
@@ -370,7 +381,9 @@ VGA_Controller		u1	(	//	Host Side
 							 .iCLK       ( VGA_CLK ),
 							 .iRST_N     ( DLY_RST_2 ),
 							 .H_Cont     ( VGA_H_CNT ),						
-						    .V_Cont     ( VGA_V_CNT )								
+						    .V_Cont     ( VGA_V_CNT )
+							//.x,
+							//.y								
 		);	
 
 
