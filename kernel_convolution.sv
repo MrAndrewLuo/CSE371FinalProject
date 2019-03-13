@@ -1,25 +1,26 @@
 // with saturation clipping
 module kernel_convolution
-	#(parameter KERNEL_SIZE = 3)
+	#(parameter KERNEL_SIZE = 3
+				WORD_SIZE = 16)
 	(
 	input logic clk, reset,
 
-	// rgb with 32 bits each (signed integer)
-	input logic signed [47:0] buffer_in
+	// rgb with (WORD_SIZE - 1) bits each (signed integer)
+	input logic signed [((WORD_SIZE * 3) - 1):0] buffer_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0], 
 		
-	// assume 31 bit signed integer for channel
+	// assume (WORD_SIZE - 1) bit signed integer for channel
 	// kernel dimensions are w x h x 3
-	input logic signed [47:0] kernel_in
+	input logic signed [((WORD_SIZE * 3) - 1):0] kernel_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0] ,
 		
 	// output signed
-	output logic signed [31:0] ans 
+	output logic signed [(WORD_SIZE - 1):0] ans 
 	);	
 	
 	// loading kernel
-	logic signed [47:0] kernel [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
-	logic signed [47:0] buffer[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	logic signed [((WORD_SIZE * 3) - 1):0] kernel [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
+	logic signed [((WORD_SIZE * 3) - 1):0] buffer[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 	always_ff @(posedge clk) begin
 		if (reset) begin
 			kernel <= kernel_in;
@@ -28,14 +29,14 @@ module kernel_convolution
 	end
 	
 	// multiply and accumulate across rows and columns
-	logic signed [31:0] sum
+	logic signed [(WORD_SIZE - 1):0] sum
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 	genvar row, col;
 	generate
 		for (row = 0; row < KERNEL_SIZE; row += 1) begin: gen_row1
 			for (col = 0; col < KERNEL_SIZE; col += 1) begin: gen_col2
-				logic signed [31:0] br, bg, bb;
-				logic signed [31:0] kr, kg, kb;
+				logic signed [(WORD_SIZE - 1):0] br, bg, bb;
+				logic signed [(WORD_SIZE - 1):0] kr, kg, kb;
 				assign {br, bg, bb} = buffer[row][col];
 				assign {kr, kg, kb} = kernel[row][col];
 				
@@ -44,7 +45,7 @@ module kernel_convolution
 		end
 	endgenerate
 	
-	logic signed [31:0] accumulator_col
+	logic signed [(WORD_SIZE - 1):0] accumulator_col
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 	generate
 		for (row = 0; row < KERNEL_SIZE; row += 1) begin: gen_row2
@@ -55,7 +56,7 @@ module kernel_convolution
 		end
 	endgenerate
 	
-	logic signed [31:0] accumulator_row [KERNEL_SIZE - 1:0];
+	logic signed [(WORD_SIZE - 1):0] accumulator_row [KERNEL_SIZE - 1:0];
 	generate
 		assign accumulator_row[0] = accumulator_col[0][KERNEL_SIZE - 1];
 		for (row = 1; row < KERNEL_SIZE; row += 1) begin: gen_row3
@@ -74,33 +75,33 @@ module kernel_convolution_test_bench ();
 
 	logic clk, reset;
 
-	// rgb with 32 bits each (signed integer)
-	logic signed [47:0] buffer_in
+	// rgb with (WORD_SIZE - 1) bits each (signed integer)
+	logic signed [((WORD_SIZE * 3) - 1):0] buffer_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 	
 	// rgb for visualization
-	logic signed [32:0] r_buffer_in
+	logic signed [(WORD_SIZE - 1):0] r_buffer_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
-	logic signed [32:0] g_buffer_in
+	logic signed [(WORD_SIZE - 1):0] g_buffer_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
-	logic signed [32:0] b_buffer_in
+	logic signed [(WORD_SIZE - 1):0] b_buffer_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];	
 	
-	// assume 31 bit signed integer for channel
+	// assume (WORD_SIZE - 1) bit signed integer for channel
 	// kernel dimensions are w x h x 3
-	logic signed [47:0] kernel_in
+	logic signed [((WORD_SIZE * 3) - 1):0] kernel_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 		
 	// rgb for visualization
-	logic signed [32:0] r_kernel_in
+	logic signed [(WORD_SIZE - 1):0] r_kernel_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
-	logic signed [32:0] g_kernel_in
+	logic signed [(WORD_SIZE - 1):0] g_kernel_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
-	logic signed [32:0] b_kernel_in
+	logic signed [(WORD_SIZE - 1):0] b_kernel_in
 	[KERNEL_SIZE - 1:0][KERNEL_SIZE - 1:0];
 	
 	// output signed
-	logic signed [31:0] ans;
+	logic signed [(WORD_SIZE - 1):0] ans;
 	
 	kernel_convolution #(KERNEL_SIZE) dut (.*);
 	
@@ -116,7 +117,7 @@ module kernel_convolution_test_bench ();
 	generate
 		for (i = 0; i < KERNEL_SIZE; i++) begin: genrow
 				for (j = 0; j < KERNEL_SIZE; j++) begin: gencol
-					reg signed [31:0] br, bg, bb, kr, kg, kb;
+					reg signed [(WORD_SIZE - 1):0] br, bg, bb, kr, kg, kb;
 					assign br = i * j; 
 					assign bg = i + j; 
 					assign bb = j;
@@ -150,11 +151,11 @@ endmodule
 
 /*
 module kernel_convolution_testbench();
-	logic signed [47:0] buffer_in
-	logic signed [31:0] ans
+	logic signed [((WORD_SIZE * 3) - 1):0] buffer_in
+	logic signed [(WORD_SIZE - 1):0] ans
 	//  signed
 	logic clk, reset,
-	logic signed [47:0] kernel_in
+	logic signed [((WORD_SIZE * 3) - 1):0] kernel_in
 
 	// Set up the clock.
 	parameter PERIOD = 100; // period = length of clock
