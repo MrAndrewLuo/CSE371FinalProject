@@ -130,11 +130,21 @@ module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 	kernel_convolution #(3, 16) horz_edge_convolve(.clk(VGA_CLK), .buffer_in(buffer_3_buffered), .kernel_in(horz_edge_kernel), .ans(horz_edge_out));	
 	kernel_convolution #(3, 16) vert_edge_convolve(.clk(VGA_CLK), .buffer_in(buffer_3_buffered), .kernel_in(vert_edge_kernel), .ans(vert_edge_out));
 	
+	logic [7:0] sobel_out, sobel_out_buffered;
+	logic signed [23:0] sobel_vert, sobel_horz;
+	// sobel operator
+	sobel_operator sobel_operator(.clk(VGA_CLK), .vert_in(sobel_vert), .horz_in(sobel_horz), .out(sobel_out));
+
 	always_ff @(posedge VGA_CLK) begin
 		grayscale16 <= {8'b0, grayscale};
 		buffer_3_buffered <= buffer_3;
-		identity_out_buffered <= identity_out;
 		
+		sobel_out_buffered <= sobel_out;
+		sobel_vert <= vert_edge_out;
+		sobel_horz <= horz_edge_out;
+		
+		// kernel buffered outputs
+		identity_out_buffered <= identity_out;
 		if (vert_edge_out > 0) vert_edge_out_buffered <= vert_edge_out; else if (vert_edge_out > 255) vert_edge_out_buffered <= 255; else vert_edge_out_buffered <= 0;
 		if (horz_edge_out > 0) horz_edge_out_buffered <= horz_edge_out; else if (horz_edge_out > 255) horz_edge_out_buffered <= 255; else horz_edge_out_buffered <= 0;
 		
@@ -146,7 +156,7 @@ module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 		else if (SW[4]) delay[1][27:4] <= {identity_out_buffered[7:0], identity_out_buffered[7:0], identity_out_buffered[7:0]};
 		else if (SW[5]) delay[1][27:4] <= {vert_edge_out_buffered[7:0], vert_edge_out_buffered[7:0], vert_edge_out_buffered[7:0]};
 		else if (SW[6]) delay[1][27:4] <= {horz_edge_out_buffered[7:0], horz_edge_out_buffered[7:0], horz_edge_out_buffered[7:0]};
-
+		else if (SW[7]) delay[1][27:4] <= {sobel_out_buffered, sobel_out_buffered, sobel_out_buffered};
 	end
 	
 	assign HEX0 = '1;
