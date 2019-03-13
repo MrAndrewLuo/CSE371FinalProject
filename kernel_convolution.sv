@@ -78,18 +78,18 @@ always_comb begin
 	if (in2 < 0) correct_sign_in1 = ~in1 + 1;
 	else correct_sign_in1 = in1;
 	
-	if (in1 < 0) correct_sign_in2 = ~in2 + 1;
+	if (in2 < 0) correct_sign_in2 = ~in2 + 1;
 	else correct_sign_in2 = in2;
 	
 	case (correct_sign_in2)
 		1: shifted = correct_sign_in1;
-		2: shifted = correct_sign_in1 >> 1;
-		3: shifted = correct_sign_in1 >> 1;
-		4: shifted = correct_sign_in1 >> 2;
-		5: shifted = correct_sign_in1 >> 2;
-		6: shifted = correct_sign_in1 >> 2;
-		7: shifted = correct_sign_in1 >> 3;
-		8: shifted = correct_sign_in1 >> 3;
+		2: shifted = correct_sign_in1 <<< 1;
+		3: shifted = (correct_sign_in1 <<< 1) + correct_sign_in1;
+		4: shifted = correct_sign_in1 <<< 2;
+		5: shifted = (correct_sign_in1 <<< 2) + correct_sign_in1;
+		6: shifted = (correct_sign_in1 <<< 2) + (correct_sign_in1 <<< 1);
+		7: shifted = correct_sign_in1 <<< 3;
+		8: shifted = correct_sign_in1 <<< 3;
 		default: shifted = 0;
 	endcase
 end
@@ -97,6 +97,41 @@ end
 always_ff @(posedge clk) begin
 	out <= shifted;
 end
+endmodule
+
+module quick_mul_testbench ();
+	localparam WORD_SIZE = 16;
+	
+	logic clk;
+	logic signed [WORD_SIZE - 1:0] in1, in2; // assume |in1| <<< |in2|
+	logic signed [WORD_SIZE - 1:0] out;
+	
+	// Set up the clock.
+	parameter CLOCK_PERIOD=100;
+	initial clk=1;
+	always begin
+		#(CLOCK_PERIOD/2);
+		clk = ~clk;
+	end
+	
+	quick_mult #(WORD_SIZE) dut(.*);
+	
+	initial begin
+		in1 <= 6; 
+		in2 <= 1; @(posedge clk); 
+		in2 <= 2; @(posedge clk); 
+		in2 <= 4; @(posedge clk);
+		in2 <= -1; @(posedge clk); 
+		in2 <= -2; @(posedge clk); 
+		in2 <= -4; @(posedge clk); 
+		in2 <= 0; @(posedge clk);
+		@(posedge clk);
+		@(posedge clk);
+		@(posedge clk);
+		@(posedge clk);
+		@(posedge clk);
+		$stop;
+	end //initial
 endmodule
 
 module kernel_convolution_testbench ();
@@ -130,24 +165,31 @@ module kernel_convolution_testbench ();
 	generate
 		for (i = 0; i < KERNEL_SIZE; i++) begin: genrow
 				for (j = 0; j < KERNEL_SIZE; j++) begin: gencol
-					assign buffer_in[i][j] = i * j;
-					assign kernel_in[i][j] = 1;
+					if (i != 0 | j != 0) begin
+						assign buffer_in[i][j] = i * j;
+					end
 				end
 		end
 	endgenerate
+	
+	generate
+		for (i = 0; i < KERNEL_SIZE; i++) begin: genrow2
+			for (j = 0; j < KERNEL_SIZE; j++) begin: gencol2
+				if (i == 0) assign kernel_in[i][j] = 1;
+				else if (i == KERNEL_SIZE - 1) assign kernel_in[i][j] = -1;
+				else assign kernel_in[i][j] = 0;
+			end		
+		end
+	endgenerate
+	
+	integer k;
 	initial begin
-		
-		@(posedge clk); @(posedge clk); @(posedge clk);
-		@(posedge clk); @(posedge clk); @(posedge clk);
-		@(posedge clk); @(posedge clk); @(posedge clk);
-		@(posedge clk); @(posedge clk); @(posedge clk);
-		@(posedge clk); @(posedge clk); @(posedge clk);
-		@(posedge clk); @(posedge clk); @(posedge clk);
-		@(posedge clk); @(posedge clk); @(posedge clk);
-		@(posedge clk); @(posedge clk); @(posedge clk);
-		@(posedge clk); @(posedge clk); @(posedge clk);
-		@(posedge clk); @(posedge clk); @(posedge clk);
+		for (k = 1; k < 100; k++) begin
+			buffer_in[0][0] = k;
+			@(posedge clk);
+		end
 
+		repeat (20) @(posedge clk);
 		$stop;
 	end //initial
 endmodule
