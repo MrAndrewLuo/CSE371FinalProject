@@ -39,18 +39,14 @@ module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 
 	// *** User inputs ***
 	input logic 		     [1:0]		KEY, // Key[2] reserved for reset, key[3] for auto-focus.
-	input logic			     [8:0]		SW   // SW[9] reserved for auto-focus mode.
+	input logic			     [7:0]		SW   // SW[9] reserved for auto-focus mode.
 );
-	// buffer for convolution
-	logic signed [95:0] convolution_buffer[HEIGHT-1:0][WIDTH-1:0];
 
 	// Simple graphics hack
 	logic [27:0] delay [1:0];
 	logic [7:0] delta_R;
 	logic [7:0] delta_G;
 	logic [7:0] delta_B;
-	logic [7:0] grayscale;
-	logic [15:0] r, g, b;
 	logic [27:0] prev_delay0;
 
 	// Before and after delays.
@@ -73,9 +69,6 @@ module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 			delta_B = delay[0][11:4] - prev_delay0[11:4];
 		else
 			delta_B = prev_delay0[11:4] - delay[0][11:4];
-		 
-		grayscale = prev_delay0[27:20] / 4 + prev_delay0[19:12] / 8 * 5  + prev_delay0[11:4] / 10;
-		
 	end
 	
 	always_ff @(posedge VGA_CLK) begin
@@ -83,8 +76,33 @@ module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 		if (SW[0]) delay[1][27:20] = delta_R;
 		if (SW[1]) delay[1][19:12] = delta_G;
 		if (SW[2]) delay[1][11:4] = delta_B;
-		if (SW[3]) delay[1][27:4] = {grayscale, grayscale, grayscale};
 	end
+	
+	/*
+	// Variable length delay.  0 or more.  Inserts NUM_DELAYS registers.
+	localparam NUM_DELAYS = 100;
+	logic [27:0] delay [NUM_DELAYS:0];
+
+	assign {oVGA_R, oVGA_G, oVGA_B, oVGA_HS, oVGA_VS, oVGA_SYNC_N, oVGA_BLANK_N} = delay[NUM_DELAYS];
+	assign delay[0] = {iVGA_R, iVGA_G, iVGA_B, iVGA_HS, iVGA_VS, iVGA_SYNC_N, iVGA_BLANK_N};
+	
+	always_ff @(posedge VGA_CLK) begin
+		for (int i=NUM_DELAYS-1; i>=0; i--) begin
+			delay[i+1] <= delay[i];
+		end
+	end
+	*/
+	
+	/*
+	// Straight cut-through
+	assign oVGA_R = iVGA_R;
+	assign oVGA_G = iVGA_G;
+	assign oVGA_B = iVGA_B;
+	assign oVGA_HS = iVGA_HS;
+	assign oVGA_VS = iVGA_VS;
+	assign oVGA_SYNC_N = iVGA_SYNC_N;
+	assign oVGA_BLANK_N = iVGA_BLANK_N;
+	*/
 	
 	assign HEX0 = '1;
 	assign HEX1 = '1;
@@ -287,50 +305,3 @@ module Filter_testbench ();
 	end
 	
 endmodule
-
-
-/*
-module Filter_testbench();
-	logic		  [7:0]		oVGA_G,
-	logic		          		iVGA_HS,
-	logic 		     [1:0]		KEY, // Key[2] reserved for reset, key[3] for auto-focus.
-	logic		     [6:0]		HEX3,
-	logic		       		oVGA_HS,
-	logic			     [8:0]		SW   // SW[9] reserved for auto-focus mode.
-	logic		     [9:0]		LEDR,
-	logic		  [7:0]		oVGA_B,
-	logic		       		oVGA_SYNC_N,
-	logic		     [6:0]		HEX4,
-	logic		          		iVGA_BLANK_N,
-	logic		     [7:0]		iVGA_R, // Red
-	logic		     [6:0]		HEX5,
-	logic		          		VGA_CLK, // 25 MHz clock
-	logic		       		oVGA_BLANK_N,
-	logic		          		iVGA_VS,
-	logic		     [7:0]		iVGA_G, // Green
-	logic		     [6:0]		HEX0,
-	logic		     [6:0]		HEX1,
-	logic		     [7:0]		iVGA_B, // Blue
-	logic		  [7:0]		oVGA_R,
-	logic		          		iVGA_SYNC_N,
-	// *** Board s ***
-	// *** User s ***
-	logic		     [6:0]		HEX2,
-	logic		       		oVGA_VS,
-
-	// Set up the clock.
-	parameter PERIOD = 100; // period = length of clock
-	initial begin
-		clk <= 0;
-		forever #(PERIOD/2) clk = ~clk;
-	end
-
-	Filter dut (.*); // ".*" Implicitly connects all ports to variables with matching names
-
-	initial begin
-
-		repeat (10) @(posedge clk);
-		$stop; // End simulation
-	end
-endmodule
-*/
