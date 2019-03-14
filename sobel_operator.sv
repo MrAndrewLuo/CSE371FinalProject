@@ -3,8 +3,8 @@ sobel_operator
 #(parameter N = 15, parameter PRECISION = 24)
 (
 input logic clk,
-input logic signed [PRECISION - 1:0] vert_in, 
-input logic signed [PRECISION - 1:0] horz_in,
+input logic signed [15:0] vert_in, 
+input logic signed [15:0] horz_in,
 output logic [7:0] out 
 );
 

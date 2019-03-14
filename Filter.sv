@@ -115,6 +115,20 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 		.out(vert_out)
 	);
 	
+	logic [7:0] sobel_8_bit;
+	sobel_operator #(15, 24) sobel (.clk(VGA_CLK), .vert_in(vert_out), .horz_in(horz_out), .out(sobel_8_bit));
+	/*
+module 
+sobel_operator
+#(parameter N = 15, parameter PRECISION = 24)
+(
+input logic clk,
+input logic signed [PRECISION - 1:0] vert_in, 
+input logic signed [PRECISION - 1:0] horz_in,
+output logic [7:0] out 
+);
+	*/
+	
 	// Before and after delays, outputs
 	always_ff @(posedge VGA_CLK) begin
 		{oVGA_R, oVGA_G, oVGA_B, oVGA_HS, oVGA_VS, oVGA_SYNC_N, oVGA_BLANK_N} <= delay[1];
@@ -128,6 +142,7 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 		else if (SW[1]) delay[1][27:4] <= {3{identity_out_8_bit}};
 		else if (SW[2]) delay[1][27:4] <= {3{horz_out_8_bit}};
 		else if (SW[3]) delay[1][27:4] <= {3{vert_out_8_bit}};
+		else if (SW[4]) delay[1][27:4] <= {3{sobel_8_bit}};
 		else begin
 			delay[1][27:4] <= delay[0][27:4];
 		end
