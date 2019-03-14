@@ -1,5 +1,5 @@
 module sliding_window 
-#(parameter KERNEL_SIZE = 3, ROW_WIDTH=640, WORD_SIZE = 8) 
+#(parameter KERNEL_SIZE = 3, ROW_WIDTH=800, WORD_SIZE = 8) 
 (
 input logic clk, reset,
 input logic signed [WORD_SIZE - 1:0] pixel_in,
@@ -9,7 +9,7 @@ output logic signed [WORD_SIZE - 1:0] buffer [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1
 	logic [WORD_SIZE * (KERNEL_SIZE - 1) - 1:0] 
 		pass_by_buffer[ROW_WIDTH - KERNEL_SIZE - 1:0];
 
-	logic [$clog2(WORD_SIZE * (KERNEL_SIZE - 1)) - 1:0] counter;
+	logic [$clog2(ROW_WIDTH - KERNEL_SIZE) - 1:0] counter;
 		
 	genvar row, col;
 	

@@ -4,7 +4,7 @@
 // Warning: the Terasic VGA controller appears to have a few off-by-one errors.  If your code is very 
 // sensitive to the EXACT number of pixels per line, you may have issues.  You have been warned!
 
-module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
+module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 (
 	input logic		          		VGA_CLK, // 25 MHz clock
  
@@ -89,9 +89,9 @@ module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 	round_to_8_bit #(PRECISION) horz_round (.in(horz_out), .out(horz_out_8_bit));
 	// convolutions
 	stream_kernel_3 #(
-		0, 1, 0,
+		1, 2, 1,
 		0, 0, 0,
-		0, -1, 0,
+		-1, -2, -1,
 		PRECISION, WIDTH
 	) horz_kernel (
 		.clk(VGA_CLK),
@@ -105,9 +105,9 @@ module Filter #(parameter WIDTH = 640, parameter HEIGHT = 480)
 	round_to_8_bit #(PRECISION) vert_round (.in(vert_out), .out(vert_out_8_bit));
 	// convolutions
 	stream_kernel_3 #(
-		0, 0, 0,
 		-1, 0, 1,
-		0, 0, 0,
+		-2, 0, 2,
+		-1, 0, 1,
 		PRECISION, WIDTH
 	) vert_kernel (
 		.clk(VGA_CLK),
@@ -155,7 +155,8 @@ output logic [7:0] out
 );
 always_comb begin
 	if (in > 255)  out = 255; 
-	else if (in < 0)  out = 0; 
+	else if (in < -255)  out = 255;
+	else if (in < 0) out = ~in + 1;
 	else out = in;
 	end
 endmodule
