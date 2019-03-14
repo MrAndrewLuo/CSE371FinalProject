@@ -110,6 +110,48 @@ module DE1_SOC_D8M_RTL(
 	
 );
 
+	logic reset; assign reset = ~KEY[2];
+
+//=============================================================================
+// Added code for LED, ADC, and AUDIO IO
+//=============================================================================
+// -------------------- LED --------------------	
+	
+	RGBLED led (.SW(SW[4:0]), .color(GPIO[3:1]));
+
+// -------------------- ADC --------------------
+
+	logic [11:0] data0;
+	ADC #(1'b0,1'b1) ADCdata (.clock(CLOCK_50), .reset, .ADC_CS_N(ADC_CONVST), .ADC_DIN, .ADC_SCLK, .ADC_DOUT, .data0);
+	
+	logic [3:0] pot; 
+	assign pot[3:0] = data0[11:8] - 4'd8;
+
+//	DisplayDriver hex0 (.val(pot),  .hex(HEX0));
+//	assign {HEX5, HEX4, HEX3, HEX2, HEX1} = '1;
+	
+// -------------------- Audio In/Out --------------------
+
+	logic read_ready, write_ready, read, write, readLeft, readRight, writeLeft, writeRight;
+	logic signed [23:0] readdata_left, readdata_right;
+	logic signed [23:0] writedata_left, writedata_right;
+	
+	localparam filter_size = 5;
+	logic en; assign en = read_ready;
+	T3Filter #(filter_size) LeftFIR  (.clk(CLOCK_50), .reset, .en, .rd_data(readdata_left >>> pot),  .wr_data(writedata_left),  .read(readLeft),  .write(writeLeft));
+	T3Filter #(filter_size) RightFIR (.clk(CLOCK_50), .reset, .en, .rd_data(readdata_right >>> pot), .wr_data(writedata_right), .read(readRight), .write(writeRight));
+
+	assign read = readLeft && readRight;
+	assign write = writeLeft && writeRight;
+	
+	clock_generator my_clock_gen(CLOCK2_50, reset, AUD_XCK);
+
+	audio_and_video_config cfg(CLOCK_50, reset, FPGA_I2C_SDAT, FPGA_I2C_SCLK);
+
+	audio_codec codec(CLOCK_50, reset, read, write, writedata_left, writedata_right, AUD_ADCDAT,
+							AUD_BCLK, AUD_ADCLRCK, AUD_DACLRCK,
+							read_ready, write_ready, readdata_left, readdata_right, AUD_DACDAT);
+
 //=============================================================================
 // Added code to insert Filter.sv into the output path
 //=============================================================================
