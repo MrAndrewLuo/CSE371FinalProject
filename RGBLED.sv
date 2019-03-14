@@ -28,5 +28,18 @@ module RGBLED (SW, color);
             color = GREEN;
          default: color = RED;
       endcase
+endmodule
 
+module RGBLED_testebench();
+   logic [4:0] SW;
+   logic [2:0] color;
+
+	RGBLED dut (.*);
+
+   integer i;
+   initial begin
+      for (i = 0; i < 6; i++) begin
+			SW = 2**i; #(10);
+      end
+   end
 endmodule
