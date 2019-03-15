@@ -150,7 +150,7 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	
 	// sobel operator
 	logic [7:0] sobel_8_bit;
-	sobel_operator #(11, 18) sobel (.clk(VGA_CLK), .vert_in(vert_out), .horz_in(horz_out), .out(sobel_8_bit));
+	sobel_operator #(PRECISION) sobel (.clk(VGA_CLK), .vert_in(vert_out), .horz_in(horz_out), .out(sobel_8_bit));
 
 	// horizontal edge, less pronounced
 	logic signed [7:0] horz_out_soft_8_bit;
@@ -322,7 +322,7 @@ module to_grayscale(input logic clk, input logic[23:0] rgb, output logic [7:0] g
 		always_ff @(posedge clk) gray <= rgb[23:16] / 4 + rgb[15:8] / 8 * 5  + rgb[7:0] / 10;
 endmodule
 
-
+`timescale 1 ps / 1 ps
 module Filter_testbench();
 	logic		  [7:0]		oVGA_G;
 	logic		       		oVGA_HS;
