@@ -13,7 +13,7 @@ parameter PRECISION = 16,
 parameter WIDTH = 640
 )
 (
-input clk, reset,
+input clk,
 input logic signed [PRECISION - 1:0] buffer_3 [2:0][2:0],
 output logic signed [PRECISION - 1:0] out,
 output logic [7:0] out_rounded
