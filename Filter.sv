@@ -62,27 +62,31 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	end
 	
 	// sliding window operators to obtain proper buffers, *b are blurred versions
+	// rgb buffer
+	logic signed [PRECISION - 1:0] buffer_3_red [2:0][2:0];	
+	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_red (.reset(1'b0), .clk(VGA_CLK), .pixel_in(r16), .buffer(buffer_3_red));
+	logic signed [PRECISION - 1:0] buffer_3_green [2:0][2:0];	
+	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_green (.reset(1'b0), .clk(VGA_CLK), .pixel_in(g16), .buffer(buffer_3_green));
+	logic signed [PRECISION - 1:0] buffer_3_blue [2:0][2:0];	
+	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_blue (.reset(1'b0), .clk(VGA_CLK), .pixel_in(b16), .buffer(buffer_3_blue));
+	
 	// gray buffer
+	logic signed [PRECISION - 1:0] buffer_3_gray_buff [2:0][2:0];	
 	logic signed [PRECISION - 1:0] buffer_3_gray [2:0][2:0];	
 	//sliding_window #(3, WIDTH, PRECISION) kernel_in_3_gray (.reset(0), .clk(VGA_CLK), .pixel_in(grayscale16), .buffer(buffer_3_gray));
 	genvar i, j;
 	generate
 		for (i = 0; i < 3; i++) begin: gray_filler_row
 			for (j = 0; j < 3; j++) begin: gray_filler_col
-				logic [23:0] rgb;
-				assign rgb = {buffer_3_red[i][j][7:0], buffer_3_green[i][j][7:0], buffer_3_blue[i][j][7:0]};
-				to_grayscale gray_filter(.clk(VGA_CLK), .rgb(rgb), .gray(buffer_3_gray[i][j]));
+				logic [23:0] rgb, rgb_buff;
+				always_ff @(posedge VGA_CLK) rgb_buff <= {buffer_3_red[i][j][7:0], buffer_3_green[i][j][7:0], buffer_3_blue[i][j][7:0]};
+				always_ff @(posedge VGA_CLK) rgb <= rgb_buff;
+				to_grayscale gray_filter(.clk(VGA_CLK), .rgb(rgb), .gray(buffer_3_gray_buff[i][j]));
+				
+				always_ff @(posedge VGA_CLK) buffer_3_gray[i][j] <= buffer_3_gray_buff[i][j];
 			end
 		end
 	endgenerate
-	
-	// rgb buffer
-	logic signed [PRECISION - 1:0] buffer_3_red [2:0][2:0];	
-	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_red (.reset(0), .clk(VGA_CLK), .pixel_in(r16), .buffer(buffer_3_red));
-	logic signed [PRECISION - 1:0] buffer_3_green [2:0][2:0];	
-	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_green (.reset(0), .clk(VGA_CLK), .pixel_in(g16), .buffer(buffer_3_green));
-	logic signed [PRECISION - 1:0] buffer_3_blue [2:0][2:0];	
-	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_blue (.reset(0), .clk(VGA_CLK), .pixel_in(b16), .buffer(buffer_3_blue));
 	
 	/******** GREY CONVOLUTIONS ********/
 	// blur kernel
@@ -97,7 +101,8 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	) blur_kernel (
 		.clk(VGA_CLK),
 		.buffer_3(buffer_3_gray),
-		.out(blur_out)
+		.out(blur_out),
+		.out_rounded()
 	);
 	
 	// identity kernel
@@ -316,10 +321,10 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	assign LEDR = '0;
 endmodule
 
-module to_grayscale(input logic clk, input logic[23:0] rgb, output logic [7:0] gray);
+module to_grayscale(input logic clk, input logic[23:0] rgb, output logic [15:0] gray);
 		logic [31:0] grayscale;
-		assign grayscale = (rgb[23:16] >> 2 + (rgb[15:8] >> 3) * 5  + rgb[7:0] / 10);
-		always_ff @(posedge clk) gray <= grayscale[7:0];
+		assign grayscale = (rgb[23:16] / 4 + (rgb[15:8] / 8) * 5  + rgb[7:0] / 10);
+		always_ff @(posedge clk) gray <= grayscale[15:0];
 endmodule
 
 `timescale 1 ps / 1 ps
@@ -338,7 +343,7 @@ module Filter_testbench();
 	logic		     [6:0]		HEX0;
 	logic		       		oVGA_VS;
 	logic		       		oVGA_SYNC_N;
-	logic			     [8:0]		SW;   // SW[9] reserved for auto-focus mode.
+	logic			     [7:0]		SW;   // SW[9] reserved for auto-focus mode.
 	logic		          		iVGA_SYNC_N;
 	logic		          		VGA_CLK; // 25 MHz clock
 	logic		          		iVGA_BLANK_N;
@@ -367,7 +372,7 @@ module Filter_testbench();
 	initial begin
 		iVGA_VS <= 0; iVGA_BLANK_N <= 0; iVGA_SYNC_N <= 0; iVGA_R <= 100; iVGA_G <= 100; iVGA_B <=100;
 
-		for(i = 0; i < 200; i++) @(posedge clk);
+		for(i = 0; i < 2000; i++) @(posedge clk);
 		$stop; // End simulation
 	end
 endmodule

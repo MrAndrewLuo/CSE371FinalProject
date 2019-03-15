@@ -9,7 +9,7 @@ assign in_neg = (~in + 1);
 always_comb begin
 	if (in > 255)  out = 255; 
 	else if (in < -255)  out = 255;
-	else if (in < 0) out = in_neg[7:0];
-	else out = in[7:0];
+	else if (in < 0) out = in_neg;
+	else out = in;
 	end
 endmodule
