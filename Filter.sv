@@ -37,7 +37,7 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	output logic		     [6:0]		HEX3,
 	output logic		     [6:0]		HEX4,
 	output logic		     [6:0]		HEX5,
-	output logic		     [9:0]		LEDR,
+	output logic		           		LEDR,
 
 	// *** User inputs ***
 	input logic 		     [2:0]		KEY, // Key[2] reserved for reset, key[3] for auto-focus.
@@ -342,7 +342,7 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	always_ff @(posedge VGA_CLK) begin		
 		delay[1][3:0] <= delay[0][3:0];
 		
-		case (SW[7:0]) 
+		case (SW[3:0]) 
 			// grey and edge detection
 			1: delay[1][27:4] <= {3{buffer_3_gray[1][1][7:0]}};  // just grayscale image
 			2: delay[1][27:4] <= {3{identity_out_8_bit}};	// identity grayscale
@@ -369,8 +369,6 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	end
 	
 	assign HEX3 = '1;
-
-	assign LEDR = '0;
 endmodule
 
 module custom_kernel
@@ -380,7 +378,8 @@ input logic VGA_CLK,
 input logic [8:0] SW,
 input logic [2:0] KEY,
 output logic [6:0] HEX1, HEX2, HEX4, HEX5,
-output logic signed [PRECISION - 1:0] custom_kernel [2:0][2:0]
+output logic signed [PRECISION - 1:0] custom_kernel [2:0][2:0],
+output logic LEDR
 );
 	logic reset;
 	logic [1:0] x ;
@@ -390,7 +389,6 @@ output logic signed [PRECISION - 1:0] custom_kernel [2:0][2:0]
 	
 	logic [1:0] x_next ;
 	logic [1:0] y_next;
-	logic x_down, y_down;
 
 	bin2hex7seg hex_x (x, HEX2);
 	bin2hex7seg hex_y (y, HEX1);
@@ -402,15 +400,12 @@ output logic signed [PRECISION - 1:0] custom_kernel [2:0][2:0]
 	bin2hex7seg hex_val2 (kernel_val_neg[2:0], HEX4_neg);
 	
 	logic KEY0, KEY1;
-	button_input KEY0m (.clk(VGA_CLK), .reset(1'b0), .button(KEY[0]), .pressed(KEY0));
-	button_input KEY1m (.clk(VGA_CLK), .reset(1'b0), .button(KEY[1]), .pressed(KEY1));
+	button_input KEY0m (.clk(VGA_CLK), .reset, .button(KEY[0]), .pressed(KEY0));
+	button_input KEY1m (.clk(VGA_CLK), .reset, .button(KEY[1]), .pressed(KEY1));
 
 	always_comb begin
-		if (KEY0) if (x + 1 == 2'b11) x_next = 0; else x_next = x + 1;
-		else x_next = x;
-		
-		if (KEY1) if(y + 1 == 2'b11) y_next = 0; else y_next = y + 1;
-		else y_next = y;
+		if (x + 1 == 2'b11) x_next = 0; else x_next = x + 1;
+		if (y + 1 == 2'b11) y_next = 0; else y_next = y + 1;
 		
 		if (cur_value < 0) begin
 			HEX5 = 7'b0111111;
@@ -432,29 +427,23 @@ output logic signed [PRECISION - 1:0] custom_kernel [2:0][2:0]
 			custom_kernel[2][0] <= 1;
 			custom_kernel[2][1] <= 1;
 			custom_kernel[2][2] <= 1;
-			x_down <= 0;
-			y_down <= 0;
-			write <= 0;
+
 			x <= 0;
 			y <= 0;
 		end
 		else begin
-			write <= SW[8];
-			x <= x_next;
-			y <= y_next;
-			
-			if (~KEY[0]) x_down <= 1;
-			else x_down <= 0;
-			
-			if (~KEY[1]) y_down <= 1;
-			else y_down <= 0;
+			if (KEY0) x <= x_next; else x <= x;
+			if (KEY1) y <= y_next; else y <= y;
 			
 			if (write) custom_kernel[y][x] <= cur_value;
 		end
+		
 		cur_value <= SW[7:4];
 		reset <= ~KEY[2];
 		kernel_val <= custom_kernel[y][x];
+		write <= SW[8];
 	end
+	assign LEDR = reset;
 endmodule
 
 module to_grayscale(input logic clk, input logic[23:0] rgb, output logic [15:0] gray);
@@ -473,6 +462,7 @@ module custom_kernel_testbench();
 	logic [2:0] KEY;
 	logic [6:0] HEX1, HEX2, HEX4, HEX5;
 	logic signed [PRECISION - 1:0] custom_kernel [2:0][2:0];
+	logic LEDR;
 	
 	// Set up the clock.
 	parameter PERIOD = 40; // period = length of clock
