@@ -21,15 +21,15 @@ output logic [7:0] out_rounded
 
 // kernel 
 logic signed [PRECISION - 1:0] kernel [2:0][2:0];
-assign kernel[0][0] = k0_0[7:0];
-assign kernel[0][1] = k0_1[7:0];
-assign kernel[0][2] = k0_2[7:0];
-assign kernel[1][0] = k1_0[7:0];
-assign kernel[1][1] = k1_1[7:0];
-assign kernel[1][2] = k1_2[7:0];
-assign kernel[2][0] = k2_0[7:0];
-assign kernel[2][1] = k2_1[7:0];
-assign kernel[2][2] = k2_2[7:0];
+assign kernel[0][0] = k0_0;
+assign kernel[0][1] = k0_1;
+assign kernel[0][2] = k0_2;
+assign kernel[1][0] = k1_0;
+assign kernel[1][1] = k1_1;
+assign kernel[1][2] = k1_2;
+assign kernel[2][0] = k2_0;
+assign kernel[2][1] = k2_1;
+assign kernel[2][2] = k2_2;
 
 // calculation
 logic signed [PRECISION - 1:0] ans;

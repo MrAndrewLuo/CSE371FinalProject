@@ -71,15 +71,19 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_blue (.reset(1'b0), .clk(VGA_CLK), .pixel_in(b16), .buffer(buffer_3_blue));
 	
 	// gray buffer
+	logic signed [PRECISION - 1:0] buffer_3_gray_buff [2:0][2:0];	
 	logic signed [PRECISION - 1:0] buffer_3_gray [2:0][2:0];	
 	//sliding_window #(3, WIDTH, PRECISION) kernel_in_3_gray (.reset(0), .clk(VGA_CLK), .pixel_in(grayscale16), .buffer(buffer_3_gray));
 	genvar i, j;
 	generate
 		for (i = 0; i < 3; i++) begin: gray_filler_row
 			for (j = 0; j < 3; j++) begin: gray_filler_col
-				logic [23:0] rgb;
-				always_ff @(posedge VGA_CLK) rgb <= {buffer_3_red[i][j][7:0], buffer_3_green[i][j][7:0], buffer_3_blue[i][j][7:0]};
-				to_grayscale gray_filter(.clk(VGA_CLK), .rgb(rgb), .gray(buffer_3_gray[i][j]));
+				logic [23:0] rgb, rgb_buff;
+				always_ff @(posedge VGA_CLK) rgb_buff <= {buffer_3_red[i][j][7:0], buffer_3_green[i][j][7:0], buffer_3_blue[i][j][7:0]};
+				always_ff @(posedge VGA_CLK) rgb <= rgb_buff;
+				to_grayscale gray_filter(.clk(VGA_CLK), .rgb(rgb), .gray(buffer_3_gray_buff[i][j]));
+				
+				always_ff @(posedge VGA_CLK) buffer_3_gray[i][j] <= buffer_3_gray_buff[i][j];
 			end
 		end
 	endgenerate
