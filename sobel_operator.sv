@@ -26,13 +26,16 @@ end
 square_8 sq_horz(.address(horz1), .clock(clk), .q(horz2));
 square_8 sq_vert(.address(vert1), .clock(clk), .q(vert2));
 
+logic [PRECISION - 1 + 3:0] sum2_int;
+assign sum2_int = vert2_buffered + horz2_buffered;
+
 logic [15:0] sum2 ;
 always_comb begin
-	if (vert2_buffered + horz2_buffered > 16'hFFFF) begin
+	if (sum2_int > 16'hFFFF) begin
 		sum2 = 16'hFFFF;
 	end
 	else begin
-		sum2 = vert2_buffered + horz2_buffered;
+		sum2 = sum2_int[15:0];
 	end
 end
 

@@ -42,10 +42,13 @@ output logic signed [WORD_SIZE - 1:0] buffer [KERNEL_SIZE - 1:0][KERNEL_SIZE - 1
 		end
 	endgenerate
 	
+	
+	logic [$clog2(ROW_WIDTH - KERNEL_SIZE):0] counter_p1;
+	assign counter_p1 = counter + 1;
 	always_ff @(posedge clk) begin
 		if (reset) counter <= 0;
 		else begin
-			if(counter < ROW_WIDTH - KERNEL_SIZE - 1) counter <= counter + 1;
+			if(counter < ROW_WIDTH - KERNEL_SIZE - 1) counter <= counter_p1[$clog2(ROW_WIDTH - KERNEL_SIZE) - 1:0];
 			else counter <= 0;
 		end
 	end
@@ -70,7 +73,7 @@ parameter WORD_SIZE = 8
 	sliding_window #(KERNEL_SIZE, ROW_SIZE) dut (.*);
 	
 	// Set up the clock.
-	parameter CLOCK_PERIOD=100;
+	localparam CLOCK_PERIOD=100;
 	initial clk=1;
 	always begin
 		#(CLOCK_PERIOD/2);

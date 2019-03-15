@@ -44,17 +44,15 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	input logic 		     [1:0]		KEY, // Key[2] reserved for reset, key[3] for auto-focus.
 	input logic			     [7:0]		SW   // SW[9] reserved for auto-focus mode.
 );
-	localparam PRECISION = 12;
+	localparam PRECISION = 16;
 
 	// Simple graphics hack
 	logic [27:0] delay [1:0];
 	logic [27:0] prev_delay0;
-	logic [7:0] grayscale, r, g, b; 
-	logic signed [PRECISION - 1:0] grayscale16, r16, g16, b16;
+	logic [7:0] r, g, b; 
+	logic signed [PRECISION - 1:0] r16, g16, b16;
 	
-	always_ff @(posedge VGA_CLK) begin
-		grayscale16 <= {8'b0, grayscale};
-		
+	always_ff @(posedge VGA_CLK) begin		
 		r <= prev_delay0[27:20];
 		g <= prev_delay0[19:12];
 		b <= prev_delay0[11:4];
@@ -72,7 +70,7 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 		for (i = 0; i < 3; i++) begin: gray_filler_row
 			for (j = 0; j < 3; j++) begin: gray_filler_col
 				logic [23:0] rgb;
-				assign rgb = {buffer_3_red[i][j], buffer_3_green[i][j], buffer_3_blue[i][j]};
+				assign rgb = {buffer_3_red[i][j][7:0], buffer_3_green[i][j][7:0], buffer_3_blue[i][j][7:0]};
 				to_grayscale gray_filter(.clk(VGA_CLK), .rgb(rgb), .gray(buffer_3_gray[i][j]));
 			end
 		end
@@ -292,7 +290,7 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 		
 		case (SW[7:0]) 
 			// grey and edge detection
-			1: delay[1][27:4] <= {3{grayscale}};				// just grayscale image
+			1: delay[1][27:4] <= {3{buffer_3_gray[1][1][7:0]}};				// just grayscale image
 			2: delay[1][27:4] <= {3{identity_out_8_bit}};	// identity grayscale
 			3: delay[1][27:4] <= {3{horz_out_8_bit}};			// horizontal edge
 			4: delay[1][27:4] <= {3{vert_out_8_bit}};			// vertical edge
@@ -319,7 +317,9 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 endmodule
 
 module to_grayscale(input logic clk, input logic[23:0] rgb, output logic [7:0] gray);
-		always_ff @(posedge clk) gray <= rgb[23:16] / 4 + rgb[15:8] / 8 * 5  + rgb[7:0] / 10;
+		logic [31:0] grayscale;
+		assign grayscale = (rgb[23:16] >> 2 + (rgb[15:8] >> 3) * 5  + rgb[7:0] / 10);
+		always_ff @(posedge clk) gray <= grayscale[7:0];
 endmodule
 
 `timescale 1 ps / 1 ps
