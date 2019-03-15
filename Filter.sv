@@ -150,7 +150,7 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	
 	// sobel operator
 	logic [7:0] sobel_8_bit;
-	sobel_operator #(15, 24) sobel (.clk(VGA_CLK), .vert_in(vert_out), .horz_in(horz_out), .out(sobel_8_bit));
+	sobel_operator #(11, 18) sobel (.clk(VGA_CLK), .vert_in(vert_out), .horz_in(horz_out), .out(sobel_8_bit));
 
 	// horizontal edge, less pronounced
 	logic signed [7:0] horz_out_soft_8_bit;
