@@ -771,6 +771,8 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to MIPI_PIXEL_HS
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to MIPI_PIXEL_VS
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to MIPI_REFCLK
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to MIPI_RESET_n
+set_global_assignment -name SYSTEMVERILOG_FILE fifo.sv
+set_global_assignment -name SYSTEMVERILOG_FILE FIFO_FIR_filter.sv
 set_global_assignment -name SYSTEMVERILOG_FILE button_input.sv
 set_global_assignment -name SYSTEMVERILOG_FILE bin2hex7seg.sv
 set_global_assignment -name MIF_FILE square_8.mif
