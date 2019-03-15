@@ -7,13 +7,17 @@ input logic signed [15:0] vert_in,
 input logic signed [15:0] horz_in,
 output logic [7:0] out 
 );
+logic signed [PRECISION - 1:0] vert1 ;
+logic signed [PRECISION - 1:0] horz1 ;
+assign vert1 = vert_in;
+assign horz1 = horz_in; 
 
 logic signed [PRECISION - 1:0] vert2 ;
 logic signed [PRECISION - 1:0] horz2 ; 
 logic signed [PRECISION - 1:0] sum2 ;
 
-assign vert2 = vert_in * vert_in;
-assign horz2 = horz_in * horz_in;
+assign vert2 = vert1 * vert1;
+assign horz2 = horz1 * horz1;
 assign sum2 = vert2 + horz2 + 1; // + 1 to avoid divide by 0's
 
 logic [PRECISION - 1:0] newton_iterations [N - 1:0];

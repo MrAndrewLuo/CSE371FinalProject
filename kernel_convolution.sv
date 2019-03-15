@@ -27,7 +27,7 @@ module kernel_convolution
 	generate
 		for (row = 0; row < KERNEL_SIZE; row += 1) begin: gen_row1
 			for (col = 0; col < KERNEL_SIZE; col += 1) begin: gen_col2
-				quick_mult #(WORD_SIZE) qm(.clk, .in1(buffer_in[row][col]), .in2(kernel_in[row][col]), .out(sum[row][col]));
+				always_ff @(posedge clk) sum[row][col] <= buffer_in[row][col] * kernel_in[row][col];
 			end
 		end
 	endgenerate
@@ -61,77 +61,6 @@ module kernel_convolution
 	
 	assign ans = accumulator_row[KERNEL_SIZE - 1];
 	
-endmodule
-
-// common multiplications which are ez and commonly used
-module quick_mult 
-#(parameter WORD_SIZE = 16)
-(
-input logic clk,
-input logic signed [WORD_SIZE - 1:0] in1, in2, // assume |in1| <<< |in2|
-output logic signed [WORD_SIZE - 1:0] out
-);
-logic signed [WORD_SIZE - 1:0] correct_sign_in1, correct_sign_in2;
-logic signed [WORD_SIZE - 1:0] shifted;
-
-always_comb begin
-	if (in2 < 0) correct_sign_in1 = ~in1 + 1;
-	else correct_sign_in1 = in1;
-	
-	if (in2 < 0) correct_sign_in2 = ~in2 + 1;
-	else correct_sign_in2 = in2;
-	
-	case (correct_sign_in2)
-		1: shifted = correct_sign_in1;
-		2: shifted = correct_sign_in1 <<< 1;
-		3: shifted = (correct_sign_in1 <<< 1) + correct_sign_in1;
-		4: shifted = correct_sign_in1 <<< 2;
-		5: shifted = (correct_sign_in1 <<< 2) + correct_sign_in1;
-		6: shifted = (correct_sign_in1 <<< 2) + (correct_sign_in1 <<< 1);
-		7: shifted = correct_sign_in1 <<< 3;
-		8: shifted = correct_sign_in1 <<< 3;
-		default: shifted = 0;
-	endcase
-end
-
-always_ff @(posedge clk) begin
-	out <= shifted;
-end
-endmodule
-
-module quick_mul_testbench ();
-	localparam WORD_SIZE = 16;
-	
-	logic clk;
-	logic signed [WORD_SIZE - 1:0] in1, in2; // assume |in1| <<< |in2|
-	logic signed [WORD_SIZE - 1:0] out;
-	
-	// Set up the clock.
-	parameter CLOCK_PERIOD=100;
-	initial clk=1;
-	always begin
-		#(CLOCK_PERIOD/2);
-		clk = ~clk;
-	end
-	
-	quick_mult #(WORD_SIZE) dut(.*);
-	
-	initial begin
-		in1 <= 6; 
-		in2 <= 1; @(posedge clk); 
-		in2 <= 2; @(posedge clk); 
-		in2 <= 4; @(posedge clk);
-		in2 <= -1; @(posedge clk); 
-		in2 <= -2; @(posedge clk); 
-		in2 <= -4; @(posedge clk); 
-		in2 <= 0; @(posedge clk);
-		@(posedge clk);
-		@(posedge clk);
-		@(posedge clk);
-		@(posedge clk);
-		@(posedge clk);
-		$stop;
-	end //initial
 endmodule
 
 module kernel_convolution_testbench ();

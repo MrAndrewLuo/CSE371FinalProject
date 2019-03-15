@@ -117,17 +117,54 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	
 	logic [7:0] sobel_8_bit;
 	sobel_operator #(15, 24) sobel (.clk(VGA_CLK), .vert_in(vert_out), .horz_in(horz_out), .out(sobel_8_bit));
-	/*
-module 
-sobel_operator
-#(parameter N = 15, parameter PRECISION = 24)
-(
-input logic clk,
-input logic signed [PRECISION - 1:0] vert_in, 
-input logic signed [PRECISION - 1:0] horz_in,
-output logic [7:0] out 
-);
-	*/
+
+	// horizontal edge, less pronounced
+	logic signed [PRECISION - 1:0] horz_out_soft;
+	logic signed [7:0] horz_out_soft_8_bit;
+	round_to_8_bit #(PRECISION) horz_soft_round (.in(horz_out_soft), .out(horz_out_soft_8_bit));
+	// convolutions
+	stream_kernel_3 #(
+		0, 2, 0,
+		0, 0, 0,
+		0, -2, 0,
+		PRECISION, WIDTH
+	) horz_soft_kernel (
+		.clk(VGA_CLK),
+		.buffer_3(buffer_3_buffered),
+		.out(horz_out_soft)
+	);
+	
+	// vertical edge, less pronounced
+	logic signed [PRECISION - 1:0] vert_out_soft;
+	logic signed [7:0] vert_out_soft_8_bit;
+	round_to_8_bit #(PRECISION) vert_soft_round (.in(vert_out_soft), .out(vert_out_soft_8_bit));
+	// convolutions
+	stream_kernel_3 #(
+		0, 0, 0,
+		-2, 0, 2,
+		0, 0, 0,
+		PRECISION, WIDTH
+	) vert_soft_kernel (
+		.clk(VGA_CLK),
+		.buffer_3(buffer_3_buffered),
+		.out(vert_out_soft)
+	);
+	
+	// classic edge, non-sobel
+	logic signed [PRECISION - 1:0] classic_edge;
+	logic signed [7:0] classic_edge_8_bit;
+	round_to_8_bit #(PRECISION) classic_edge_round (.in(classic_edge), .out(classic_edge_8_bit));
+	// convolutions
+	stream_kernel_3 #(
+		-1, -1, -1,
+		-1, 8, -1,
+		-1, -1, -1,
+		PRECISION, WIDTH
+	) classic_edge_kernel (
+		.clk(VGA_CLK),
+		.buffer_3(buffer_3_buffered),
+		.out(classic_edge)
+	);
 	
 	// Before and after delays, outputs
 	always_ff @(posedge VGA_CLK) begin
@@ -138,20 +175,19 @@ output logic [7:0] out
 	
 	always_ff @(posedge VGA_CLK) begin		
 		delay[1][3:0] <= delay[0][3:0];
-		if (SW[0]) delay[1][27:4] <= {3{grayscale_buffered}};
-		else if (SW[1]) delay[1][27:4] <= {3{identity_out_8_bit}};
-		else if (SW[2]) delay[1][27:4] <= {3{horz_out_8_bit}};
-		else if (SW[3]) delay[1][27:4] <= {3{vert_out_8_bit}};
-		else if (SW[4]) delay[1][27:4] <= {3{sobel_8_bit}};
-		else begin
-			delay[1][27:4] <= delay[0][27:4];
-		end
-
-		//else if (SW[2]) delay[1][27:4] <= {vert_edge_out_buffered[7:0], vert_edge_out_buffered[7:0], vert_edge_out_buffered[7:0]};
-		//else if (SW[3]) delay[1][27:4] <= {horz_edge_out_buffered[7:0], horz_edge_out_buffered[7:0], horz_edge_out_buffered[7:0]};
-		//else if (SW[4]) delay[1][27:4] <= {sobel_out_buffered, sobel_out_buffered, sobel_out_buffered};
+		
+		case (SW) 
+			1: delay[1][27:4] <= {3{grayscale_buffered}};
+			2: delay[1][27:4] <= {3{identity_out_8_bit}};
+			3: delay[1][27:4] <= {3{horz_out_8_bit}};
+			4: delay[1][27:4] <= {3{vert_out_8_bit}};
+			5: delay[1][27:4] <= {3{sobel_8_bit}};
+			6: delay[1][27:4] <= {3{horz_out_soft_8_bit}};
+			7: delay[1][27:4] <= {3{vert_out_soft_8_bit}};
+			8: delay[1][27:4] <= {3{classic_edge_8_bit}};
+			default: delay[1][27:4] <= delay[0][27:4];
+		endcase
 	end
-
 
 	assign HEX0 = '1;
 	assign HEX1 = '1;

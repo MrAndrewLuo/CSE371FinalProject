@@ -172,7 +172,7 @@ module DE1_SOC_D8M_RTL(
 	wire		          		post_VGA_SYNC_N;
 	wire		          		post_VGA_VS;
 	
-	Filter #(.WIDTH(640), .HEIGHT(480))
+	Filter #(.WIDTH(800), .HEIGHT(480))
 		filter (.VGA_CLK(VGA_CLK),
 					.iVGA_B(pre_VGA_B), .iVGA_G(pre_VGA_G), .iVGA_R(pre_VGA_R),
 					.iVGA_HS(pre_VGA_HS), .iVGA_VS(pre_VGA_VS),
