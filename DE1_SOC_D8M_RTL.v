@@ -125,10 +125,9 @@ module DE1_SOC_D8M_RTL(
 	ADC #(1'b0,1'b1) ADCdata (.clock(CLOCK_50), .reset, .ADC_CS_N(ADC_CONVST), .ADC_DIN, .ADC_SCLK, .ADC_DOUT, .data0);
 	
 	logic [3:0] pot; 
-	assign pot[3:0] = data0[11:8] - 4'd8;
+	assign pot[3:0] = (data0[11:8] - 4'd8);
 
-//	DisplayDriver hex0 (.val(pot),  .hex(HEX0));
-//	assign {HEX5, HEX4, HEX3, HEX2, HEX1} = '1;
+	DisplayDriver hex0 (.val(pot),  .hex(HEX0));
 	
 // -------------------- Audio In/Out --------------------
 
@@ -180,8 +179,8 @@ module DE1_SOC_D8M_RTL(
 					.oVGA_B(post_VGA_B), .oVGA_G(post_VGA_G), .oVGA_R(post_VGA_R),
 					.oVGA_HS(post_VGA_HS), .oVGA_VS(post_VGA_VS),
 					.oVGA_SYNC_N(post_VGA_SYNC_N), .oVGA_BLANK_N(post_VGA_BLANK_N),
-					.HEX0(HEX0), .HEX1(HEX1), .HEX2(HEX2), .HEX3(HEX3), .HEX4(HEX4), .HEX5(HEX5),
-					.LEDR(KEDR), .KEY(KEY[1:0]), .SW(SW[7:0]));
+					.HEX1(HEX1), .HEX2(HEX2), .HEX3(HEX3), .HEX4(HEX4), .HEX5(HEX5),
+					.LEDR(KEDR), .KEY(KEY[1:0]), .SW(SW[8:0]));
 					
 	assign VGA_BLANK_N = post_VGA_BLANK_N;
 	assign VGA_B = post_VGA_B;
@@ -309,7 +308,7 @@ wire WR_ALMOST_DONE;
 wire [22:0] wrAddr, maxWr;			
 Capture CaptureMode (.clk(SDRAM_CTRL_CLK),
 							.reset(KEY[2]),
-							.s(SW[8]),
+							.s(SW[9]),
 							.almostDoneWr(WR_ALMOST_DONE),
 							.wrAddr,
 							.maxWr
@@ -382,11 +381,11 @@ FOCUS_ADJ adl(
                       .CLK_50        ( CLOCK2_50 ) , 
                       .RESET_N       ( I2C_RELEASE ), 
                       .RESET_SUB_N   ( I2C_RELEASE ), 
-                      .AUTO_FOC      ( KEY[3] & AUTO_FOC ), 
+                      .AUTO_FOC      ( ~KEY[3] & AUTO_FOC ), 
                       .SW_Y          ( 0 ),
                       .SW_H_FREQ     ( 0 ),   
-                      .SW_FUC_LINE   ( SW[9] ),   
-                      .SW_FUC_ALL_CEN( SW[9] ),
+                      .SW_FUC_LINE   ( ~KEY[3] & AUTO_FOC  ),   
+                      .SW_FUC_ALL_CEN( ~KEY[3] & AUTO_FOC  ),
                       .VIDEO_HS      ( pre_VGA_HS ),
                       .VIDEO_VS      ( pre_VGA_VS ),
                       .VIDEO_CLK     ( VGA_CLK ),

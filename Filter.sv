@@ -32,7 +32,6 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
  	output logic		       		oVGA_BLANK_N,
 	
 	// *** Board outputs ***
-	output logic		     [6:0]		HEX0,
 	output logic		     [6:0]		HEX1,
 	output logic		     [6:0]		HEX2,
 	output logic		     [6:0]		HEX3,
@@ -41,9 +40,10 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	output logic		     [9:0]		LEDR,
 
 	// *** User inputs ***
-	input logic 		     [1:0]		KEY, // Key[2] reserved for reset, key[3] for auto-focus.
-	input logic			     [7:0]		SW   // SW[9] reserved for auto-focus mode.
+	input logic 		     [2:0]		KEY, // Key[2] reserved for reset, key[3] for auto-focus.
+	input logic			     [8:0]		SW   // SW[9] reserved for auto-focus mode.
 );
+	
 	localparam PRECISION = 16;
 
 	// Simple graphics hack
@@ -64,11 +64,11 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	// sliding window operators to obtain proper buffers, *b are blurred versions
 	// rgb buffer
 	logic signed [PRECISION - 1:0] buffer_3_red [2:0][2:0];	
-	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_red (.reset(1'b0), .clk(VGA_CLK), .pixel_in(r16), .buffer(buffer_3_red));
+	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_red (.reset(reset), .clk(VGA_CLK), .pixel_in(r16), .buffer(buffer_3_red));
 	logic signed [PRECISION - 1:0] buffer_3_green [2:0][2:0];	
-	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_green (.reset(1'b0), .clk(VGA_CLK), .pixel_in(g16), .buffer(buffer_3_green));
+	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_green (.reset(reset), .clk(VGA_CLK), .pixel_in(g16), .buffer(buffer_3_green));
 	logic signed [PRECISION - 1:0] buffer_3_blue [2:0][2:0];	
-	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_blue (.reset(1'b0), .clk(VGA_CLK), .pixel_in(b16), .buffer(buffer_3_blue));
+	sliding_window #(3, WIDTH, PRECISION) kernel_in_3_blue (.reset(reset), .clk(VGA_CLK), .pixel_in(b16), .buffer(buffer_3_blue));
 	
 	// gray buffer
 	logic signed [PRECISION - 1:0] buffer_3_gray_buff [2:0][2:0];	
@@ -151,11 +151,8 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 		.out_rounded(vert_out_8_bit)
 	);
 	
-	// sobel operator
-	logic [7:0] sobel_8_bit;
-	sobel_operator #(PRECISION) sobel (.clk(VGA_CLK), .vert_in(vert_out), .horz_in(horz_out), .out(sobel_8_bit));
-
 	// horizontal edge, less pronounced
+	logic signed [PRECISION - 1:0] horz_out_soft;
 	logic signed [7:0] horz_out_soft_8_bit;
 	// convolutions
 	stream_kernel_3 #(
@@ -166,11 +163,12 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	) horz_soft_kernel (
 		.clk(VGA_CLK),
 		.buffer_3(buffer_3_gray),
-		.out(),
+		.out(horz_out_soft),
 		.out_rounded(horz_out_soft_8_bit)
 	);
 	
 	// vertical edge, less pronounced
+	logic signed [PRECISION - 1:0] vert_out_soft;
 	logic signed [7:0] vert_out_soft_8_bit;
 	// convolutions
 	stream_kernel_3 #(
@@ -181,7 +179,7 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 	) vert_soft_kernel (
 		.clk(VGA_CLK),
 		.buffer_3(buffer_3_gray),
-		.out(),
+		.out(vert_out_soft),
 		.out_rounded(vert_out_soft_8_bit)
 	);
 	
@@ -200,6 +198,11 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 		.out_rounded(classic_edge_8_bit)
 	);
 	
+	// sobel operator
+	logic [7:0] sobel_8_bit, sobel_soft_8_bit;
+	sobel_operator #(PRECISION) sobel (.clk(VGA_CLK), .vert_in(vert_out), .horz_in(horz_out), .out(sobel_8_bit));
+	sobel_operator #(PRECISION) sobel_soft (.clk(VGA_CLK), .vert_in(vert_out_soft), .horz_in(horz_out_soft), .out(sobel_soft_8_bit));
+
 	/******** COLOR CONVOLUTIONS ********/
 	// blur kernels
 	logic signed [PRECISION-1:0] blur_out_r;
@@ -283,6 +286,52 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 		.out_rounded(sharpen_b_8_bit)
 	);
 	
+	/******** CUSTOM CONVOLUTIONS ********/
+	logic signed [PRECISION - 1:0] custom_kernel [2:0][2:0];
+	custom_kernel #(PRECISION) custom_kernel_module (.*);
+
+	logic [7:0] custom_r_8_bit;
+	stream_kernel_3_mutable #(
+		PRECISION, WIDTH
+	) custom_r (
+		.clk(VGA_CLK),
+		.buffer_3(buffer_3_red),
+		.kernel(custom_kernel),
+		.out(),
+		.out_rounded(custom_r_8_bit)
+	);
+	logic [7:0] custom_g_8_bit;
+	stream_kernel_3_mutable #(
+		PRECISION, WIDTH
+	) custom_g (
+		.clk(VGA_CLK),
+		.buffer_3(buffer_3_green),
+		.kernel(custom_kernel),
+		.out(),
+		.out_rounded(custom_g_8_bit)
+	);
+	logic [7:0] custom_b_8_bit;
+	stream_kernel_3_mutable #(
+		PRECISION, WIDTH
+	) custom_b (
+		.clk(VGA_CLK),
+		.buffer_3(buffer_3_blue),
+		.kernel(custom_kernel),
+		.out(),
+		.out_rounded(custom_b_8_bit)
+	);
+	
+	logic [7:0] custom_gray_8_bit;
+	stream_kernel_3_mutable #(
+		PRECISION, WIDTH
+	) custom_gray (
+		.clk(VGA_CLK),
+		.buffer_3(buffer_3_gray),
+		.kernel(custom_kernel),
+		.out(),
+		.out_rounded(custom_gray_8_bit)
+	);
+	
 	// Before and after delays, outputs
 	always_ff @(posedge VGA_CLK) begin
 		{oVGA_R, oVGA_G, oVGA_B, oVGA_HS, oVGA_VS, oVGA_SYNC_N, oVGA_BLANK_N} <= delay[1];
@@ -295,36 +344,154 @@ module Filter #(parameter WIDTH = 800, parameter HEIGHT = 480)
 		
 		case (SW[7:0]) 
 			// grey and edge detection
-			1: delay[1][27:4] <= {3{buffer_3_gray[1][1][7:0]}};				// just grayscale image
+			1: delay[1][27:4] <= {3{buffer_3_gray[1][1][7:0]}};  // just grayscale image
 			2: delay[1][27:4] <= {3{identity_out_8_bit}};	// identity grayscale
 			3: delay[1][27:4] <= {3{horz_out_8_bit}};			// horizontal edge
 			4: delay[1][27:4] <= {3{vert_out_8_bit}};			// vertical edge
 			5: delay[1][27:4] <= {3{sobel_8_bit}};				// sobel edge
 			6: delay[1][27:4] <= {3{horz_out_soft_8_bit}};	// horizontal edge, less prounounced
 			7: delay[1][27:4] <= {3{vert_out_soft_8_bit}};	// vertical edge, less pronounced
-			8: delay[1][27:4] <= {3{classic_edge_8_bit}};	// classic "edge" filter
-			9: delay[1][27:4] <= {3{blur_out_8_bit}};			// gaussian blur grey
+			8: delay[1][27:4] <= {3{sobel_soft_8_bit}};	   // sobel edge, less pronounced
+			9: delay[1][27:4] <= {3{classic_edge_8_bit}};	// classic "edge" filter
+			10: delay[1][27:4] <= {3{blur_out_8_bit}};	   // gaussian blur grey
 			
 			// rgb 
-			10: delay[1][27:4] <= {blur_out_r_8_bit, blur_out_g_8_bit, blur_out_b_8_bit};			// gaussian blur rgb
-			11: delay[1][27:4] <= {sharpen_r_8_bit, sharpen_g_8_bit, sharpen_b_8_bit};			// sharpen rgb
+			11: delay[1][27:4] <= {blur_out_r_8_bit, blur_out_g_8_bit, blur_out_b_8_bit};		// gaussian blur rgb
+			12: delay[1][27:4] <= {sharpen_r_8_bit, sharpen_g_8_bit, sharpen_b_8_bit};			// sharpen rgb
+			
+			// custom kernels
+			13: delay[1][27:4] <= {custom_r_8_bit, custom_g_8_bit, custom_b_8_bit};
+			14: delay[1][27:4] <= {3{custom_gray_8_bit}};
+			
+			// e.g. 0
 			default: delay[1][27:4] <= delay[0][27:4];
 		endcase
 	end
-
-	assign HEX0 = '1;
-	assign HEX1 = '1;
-	assign HEX2 = '1;
+	
 	assign HEX3 = '1;
-	assign HEX4 = '1;
-	assign HEX5 = '1;
+
 	assign LEDR = '0;
+endmodule
+
+module custom_kernel
+#(parameter PRECISION = 16)
+(
+input logic VGA_CLK,
+input logic [8:0] SW,
+input logic [2:0] KEY,
+output logic [6:0] HEX1, HEX2, HEX4, HEX5,
+output logic signed [PRECISION - 1:0] custom_kernel [2:0][2:0]
+);
+	logic reset;
+	logic [1:0] x ;
+	logic [1:0] y ;
+	logic signed [3:0] cur_value , kernel_val, kernel_val_neg;
+	logic write;
+	
+	logic [1:0] x_next ;
+	logic [1:0] y_next;
+	logic x_down, y_down;
+
+	bin2hex7seg hex_x (x, HEX2);
+	bin2hex7seg hex_y (y, HEX1);
+
+	logic [6:0] HEX4_neg, HEX4_pos;
+	bin2hex7seg hex_val1 (kernel_val[2:0], HEX4_pos);
+	
+	assign kernel_val_neg = (~kernel_val + 1);
+	bin2hex7seg hex_val2 (kernel_val_neg[2:0], HEX4_neg);
+	
+	logic KEY0, KEY1;
+	button_input KEY0m (.clk(VGA_CLK), .reset(1'b0), .button(KEY[0]), .pressed(KEY0));
+	button_input KEY1m (.clk(VGA_CLK), .reset(1'b0), .button(KEY[1]), .pressed(KEY1));
+
+	always_comb begin
+		if (KEY0) if (x + 1 == 2'b11) x_next = 0; else x_next = x + 1;
+		else x_next = x;
+		
+		if (KEY1) if(y + 1 == 2'b11) y_next = 0; else y_next = y + 1;
+		else y_next = y;
+		
+		if (cur_value < 0) begin
+			HEX5 = 7'b0111111;
+			HEX4 = HEX4_neg;
+		end
+		else begin
+			HEX5 = 7'b1111111;
+			HEX4 = HEX4_pos;
+		end
+	end
+	always_ff @(posedge VGA_CLK) begin
+		if (reset) begin
+			custom_kernel[0][0] <= 1;
+			custom_kernel[0][1] <= 1;
+			custom_kernel[0][2] <= 1;
+			custom_kernel[1][0] <= 1;
+			custom_kernel[1][1] <= 1;
+			custom_kernel[1][2] <= 1;
+			custom_kernel[2][0] <= 1;
+			custom_kernel[2][1] <= 1;
+			custom_kernel[2][2] <= 1;
+			x_down <= 0;
+			y_down <= 0;
+			write <= 0;
+			x <= 0;
+			y <= 0;
+		end
+		else begin
+			write <= SW[8];
+			x <= x_next;
+			y <= y_next;
+			
+			if (~KEY[0]) x_down <= 1;
+			else x_down <= 0;
+			
+			if (~KEY[1]) y_down <= 1;
+			else y_down <= 0;
+			
+			if (write) custom_kernel[y][x] <= cur_value;
+		end
+		cur_value <= SW[7:4];
+		reset <= ~KEY[2];
+		kernel_val <= custom_kernel[y][x];
+	end
 endmodule
 
 module to_grayscale(input logic clk, input logic[23:0] rgb, output logic [15:0] gray);
 		logic [31:0] grayscale;
 		assign grayscale = (rgb[23:16] / 4 + (rgb[15:8] / 8) * 5  + rgb[7:0] / 10);
 		always_ff @(posedge clk) gray <= grayscale[15:0];
+endmodule
+
+module custom_kernel_testbench();
+	localparam PRECISION = 16;
+	
+	logic VGA_CLK, clk;
+	assign VGA_CLK = clk;
+	
+	logic [8:0] SW;
+	logic [2:0] KEY;
+	logic [6:0] HEX1, HEX2, HEX4, HEX5;
+	logic signed [PRECISION - 1:0] custom_kernel [2:0][2:0];
+	
+	// Set up the clock.
+	parameter PERIOD = 40; // period = length of clock
+	initial begin
+		clk = 0;
+		forever #(PERIOD/2) clk = ~clk;
+	end
+	
+	custom_kernel dut (.*); // ".*" Implicitly connects all ports to variables with matching names
+	
+	integer i;
+	initial begin
+		KEY[2] <= 0; KEY[1] <= 1; KEY[0] <= 1; SW <= '0; @(posedge clk); KEY[2] <= 1; @(posedge clk);
+		KEY[0] <= 0; @(posedge clk); @(posedge clk); @(posedge clk); KEY[0] <= 1; @(posedge clk);
+		KEY[1] <= 0; @(posedge clk); @(posedge clk); @(posedge clk); KEY[1] <= 1; @(posedge clk);
+
+		for(i = 0; i < 2000; i++) @(posedge clk);
+		$stop; // End simulation
+	end
 endmodule
 
 `timescale 1 ps / 1 ps
