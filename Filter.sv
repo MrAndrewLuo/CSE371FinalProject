@@ -418,15 +418,15 @@ output logic LEDR
 	end
 	always_ff @(posedge VGA_CLK) begin
 		if (reset) begin
-			custom_kernel[0][0] <= 1;
-			custom_kernel[0][1] <= 1;
-			custom_kernel[0][2] <= 1;
-			custom_kernel[1][0] <= 1;
-			custom_kernel[1][1] <= 1;
-			custom_kernel[1][2] <= 1;
-			custom_kernel[2][0] <= 1;
-			custom_kernel[2][1] <= 1;
-			custom_kernel[2][2] <= 1;
+			custom_kernel[0][0] <= 0;
+			custom_kernel[0][1] <= 0;
+			custom_kernel[0][2] <= 0;
+			custom_kernel[1][0] <= 0;
+			custom_kernel[1][1] <= 0;
+			custom_kernel[1][2] <= 0;
+			custom_kernel[2][0] <= 0;
+			custom_kernel[2][1] <= 0;
+			custom_kernel[2][2] <= 0;
 
 			x <= 0;
 			y <= 0;

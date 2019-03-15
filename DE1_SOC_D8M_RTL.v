@@ -125,10 +125,10 @@ module DE1_SOC_D8M_RTL(
 	ADC #(1'b0,1'b1) ADCdata (.clock(CLOCK_50), .reset, .ADC_CS_N(ADC_CONVST), .ADC_DIN, .ADC_SCLK, .ADC_DOUT, .data0);
 	
 	logic [3:0] pot; 
-	assign pot[3:0] = data0[11:8];
+	assign pot[3:0] = 4'd7 - data0[11:8];
 
-	DisplayDriver hex0 (.val(pot),  .hex(HEX0));
-	assign LEDR[9:1] = data0[7:0];
+//	DisplayDriver hex0 (.val(pot),  .hex(HEX0));
+	assign LEDR[9:6] = data0[3:0];
 	
 // -------------------- Audio In/Out --------------------
 
@@ -136,7 +136,7 @@ module DE1_SOC_D8M_RTL(
 	logic signed [23:0] readdata_left, readdata_right;
 	logic signed [23:0] writedata_left, writedata_right;
 	
-	localparam filter_size = 5;
+	localparam filter_size = 8;
 	logic en; assign en = read_ready;
 	T3Filter #(filter_size) LeftFIR  (.clk(CLOCK_50), .reset, .en, .rd_data(readdata_left >>> pot),  .wr_data(writedata_left),  .read(readLeft),  .write(writeLeft));
 	T3Filter #(filter_size) RightFIR (.clk(CLOCK_50), .reset, .en, .rd_data(readdata_right >>> pot), .wr_data(writedata_right), .read(readRight), .write(writeRight));
