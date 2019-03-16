@@ -148,44 +148,44 @@ module DE1_SOC_D8M_RTL(
 	always_ff @(posedge CLOCK_50) begin
 		case (pot)
 			0: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= writedata_left >>> 4 ;
+				writedata_right_buff <= writedata_right >>> 4;
 			end
 			1: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= (writedata_left >>> 3);
+				writedata_right_buff <= (writedata_right >>> 3);
 			end
 			2: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= (writedata_left >>> 3) * 7;
+				writedata_right_buff <= (writedata_right >>> 3) * 7;
 			end
 			3: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= (writedata_left >>> 3) * 7;
+				writedata_right_buff <= (writedata_right >>> 3) * 7;
 			end
 			4: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= (writedata_left >>> 3) * 5;
+				writedata_right_buff <= (writedata_right >>> 3) * 5;
 			end
 			5: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= (writedata_left >>> 3) * 3;
+				writedata_right_buff <= (writedata_right >>> 3) * 3;
 			end
 			6: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= (writedata_left >>> 2) ;
+				writedata_right_buff <= (writedata_right >>> 2);
 			end
 			7: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= (writedata_left >>> 2);
+				writedata_right_buff <= (writedata_right >>> 2);
 			end
 			8: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= (writedata_left >>> 2) * 3;
+				writedata_right_buff <= (writedata_right >>> 2) * 3;
 			end
 			9: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
+				writedata_left_buff <= (writedata_left >>> 2) * 3;
+				writedata_right_buff <= (writedata_right >>> 2) * 3;
 			end
 			10: begin
 				writedata_left_buff <= writedata_left;
@@ -207,10 +207,6 @@ module DE1_SOC_D8M_RTL(
 				writedata_left_buff <= writedata_left;
 				writedata_right_buff <= writedata_right;
 			end
-			15: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
-			end
 			default: begin
 				writedata_left_buff <= writedata_left;
 				writedata_right_buff <= writedata_right;
@@ -221,7 +217,7 @@ module DE1_SOC_D8M_RTL(
 	clock_generator my_clock_gen(CLOCK2_50, reset, AUD_XCK);
 	audio_and_video_config cfg(CLOCK_50, reset, FPGA_I2C_SDAT, FPGA_I2C_SCLK);
 
-	audio_codec codec(CLOCK_50, reset, read, write, writedata_left, writedata_right, AUD_ADCDAT,
+	audio_codec codec(CLOCK_50, reset, read, write, writedata_left_buff, writedata_right_buff, AUD_ADCDAT,
 							AUD_BCLK, AUD_ADCLRCK, AUD_DACLRCK,
 							read_ready, write_ready, readdata_left, readdata_right, AUD_DACDAT);
 
