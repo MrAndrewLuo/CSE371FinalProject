@@ -122,39 +122,103 @@ module DE1_SOC_D8M_RTL(
 // -------------------- ADC --------------------
 
 	logic [11:0] data0;
-	ADC #(1'b0,1'b1) ADCdata (.clock(CLOCK_50), .reset, .ADC_CS_N(ADC_CONVST), .ADC_DIN, .ADC_SCLK, .ADC_DOUT, .data0);
+	ADC #(1'b1,1'b0) ADCdata (.clock(CLOCK_50), .reset, .ADC_CS_N(ADC_CONVST), .ADC_DIN, .ADC_SCLK, .ADC_DOUT, .data0);
 	
 	logic [3:0] pot; 
-	assign pot[3:0] = 4'd7 - data0[11:8];
+	assign pot[3:0] = data0[11:8];
 
-//	DisplayDriver hex0 (.val(pot),  .hex(HEX0));
-	assign LEDR[9:6] = data0[3:0];
+	DisplayDriver hex0 (.val(pot),  .hex(HEX0));
+	assign LEDR[9:6] = data0[11:8];
 	
 // -------------------- Audio In/Out --------------------
 
 	logic read_ready, write_ready, read, write, readLeft, readRight, writeLeft, writeRight;
 	logic signed [23:0] readdata_left, readdata_right;
 	logic signed [23:0] writedata_left, writedata_right;
-	
-	localparam filter_size = 8;
-	logic en; assign en = read_ready;
-	FIFO_FIR_filter #(24, filter_size) LeftFIR  (.clk(CLOCK_50), .reset, .sample_in(readdata_left >>> pot),  .sample_out(writedata_left));
-	FIFO_FIR_filter #(24, filter_size) RightFIR (.clk(CLOCK_50), .reset, .sample_in(readdata_right >>> pot), .sample_out(writedata_right));
+	logic signed [23:0] writedata_left_buff, writedata_right_buff;
 
-/*
-module FIFO_FIR_filter #(parameter WIDTH = 24, parameter N = 7) 
-							   (
-									input logic clk, reset,
-									input logic signed [WIDTH - 1:0] sample_in,
-									output logic signed [WIDTH - 1:0] sample_out
-								);
-*/
+	localparam filter_size = 8;
 	
-	assign read = readLeft && readRight;
-	assign write = writeLeft && writeRight;
+	FIFO_FIR_filter #(24, filter_size) LeftFIR  (.clk(CLOCK_50), .reset, .sample_in(readdata_left),  .sample_out(writedata_left));
+	FIFO_FIR_filter #(24, filter_size) RightFIR (.clk(CLOCK_50), .reset, .sample_in(readdata_right), .sample_out(writedata_right));
+
+	assign read = read_ready;
+	assign write = write_ready;
+	
+	always_ff @(posedge CLOCK_50) begin
+		case (pot)
+			0: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			1: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			2: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			3: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			4: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			5: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			6: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			7: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			8: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			9: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			10: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			11: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			12: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			13: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			14: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			15: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+			default: begin
+				writedata_left_buff <= writedata_left;
+				writedata_right_buff <= writedata_right;
+			end
+		endcase
+	end
 	
 	clock_generator my_clock_gen(CLOCK2_50, reset, AUD_XCK);
-
 	audio_and_video_config cfg(CLOCK_50, reset, FPGA_I2C_SDAT, FPGA_I2C_SCLK);
 
 	audio_codec codec(CLOCK_50, reset, read, write, writedata_left, writedata_right, AUD_ADCDAT,
@@ -191,7 +255,7 @@ module FIFO_FIR_filter #(parameter WIDTH = 24, parameter N = 7)
 					.oVGA_SYNC_N(post_VGA_SYNC_N), .oVGA_BLANK_N(post_VGA_BLANK_N),
 					.HEX1(HEX1), .HEX2(HEX2), .HEX3(HEX3), .HEX4(HEX4), .HEX5(HEX5),
 					.LEDR(LEDR[0]), .KEY(KEY[2:0]), .SW(SW[8:0]));
-					
+				
 	assign VGA_BLANK_N = post_VGA_BLANK_N;
 	assign VGA_B = post_VGA_B;
 	assign VGA_G = post_VGA_G;

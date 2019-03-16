@@ -407,7 +407,7 @@ output logic LEDR
 		if (x + 1 == 2'b11) x_next = 0; else x_next = x + 1;
 		if (y + 1 == 2'b11) y_next = 0; else y_next = y + 1;
 		
-		if (cur_value < 0) begin
+		if (cur_value[PRECISION - 1]) begin
 			HEX5 = 7'b0111111;
 			HEX4 = HEX4_neg;
 		end
@@ -435,7 +435,9 @@ output logic LEDR
 			if (KEY0) x <= x_next; else x <= x;
 			if (KEY1) y <= y_next; else y <= y;
 			
-			if (write) custom_kernel[y][x] <= cur_value;
+			if (write) 
+				custom_kernel[y][x] <= cur_value;
+
 		end
 		
 		cur_value <= SW[7:4];
