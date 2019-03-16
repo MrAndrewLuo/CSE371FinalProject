@@ -384,7 +384,7 @@ output logic LEDR
 	logic reset;
 	logic [1:0] x ;
 	logic [1:0] y ;
-	logic signed [3:0] cur_value , kernel_val, kernel_val_neg;
+	logic signed [PRECISION - 1:0] cur_value , kernel_val, kernel_val_neg;
 	logic write;
 	
 	logic [1:0] x_next ;

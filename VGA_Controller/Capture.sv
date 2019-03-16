@@ -47,3 +47,31 @@ module Capture(clk, reset, s, almostDoneWr, wrAddr, maxWr);
 	end
 
 endmodule 
+
+module Capture_testbench();
+	logic clk, reset, s, almostDoneWr;
+	logic [22:0] wrAddr, maxWr;
+
+	initial begin
+		clk <= 0;
+		forever #(10) clk <= ~clk;
+	end
+
+	Capture dut (.*);
+
+	initial begin
+		s <= 0; almostDoneWr <= 0;
+		reset <= 1; @(posedge clk);
+		reset <= 0; @(posedge clk);
+		@(posedge clk);
+		s <= 1; @(posedge clk);
+		@(posedge clk);
+		almostDoneWr <= 1; @(posedge clk);
+		almostDoneWr <= 0; @(posedge clk);
+		@(posedge clk);
+		s <= 0; @(posedge clk);
+		almostDoneWr <= 1; @(posedge clk);
+		almostDoneWr <= 0; @(posedge clk);
+		$stop;
+	end
+endmodule

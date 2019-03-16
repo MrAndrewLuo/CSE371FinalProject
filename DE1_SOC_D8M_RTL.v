@@ -138,9 +138,18 @@ module DE1_SOC_D8M_RTL(
 	
 	localparam filter_size = 8;
 	logic en; assign en = read_ready;
-	T3Filter #(filter_size) LeftFIR  (.clk(CLOCK_50), .reset, .en, .rd_data(readdata_left >>> pot),  .wr_data(writedata_left),  .read(readLeft),  .write(writeLeft));
-	T3Filter #(filter_size) RightFIR (.clk(CLOCK_50), .reset, .en, .rd_data(readdata_right >>> pot), .wr_data(writedata_right), .read(readRight), .write(writeRight));
+	FIFO_FIR_filter #(24, filter_size) LeftFIR  (.clk(CLOCK_50), .reset, .sample_in(readdata_left >>> pot),  .sample_out(writedata_left));
+	FIFO_FIR_filter #(24, filter_size) RightFIR (.clk(CLOCK_50), .reset, .sample_in(readdata_right >>> pot), .sample_out(writedata_right));
 
+/*
+module FIFO_FIR_filter #(parameter WIDTH = 24, parameter N = 7) 
+							   (
+									input logic clk, reset,
+									input logic signed [WIDTH - 1:0] sample_in,
+									output logic signed [WIDTH - 1:0] sample_out
+								);
+*/
+	
 	assign read = readLeft && readRight;
 	assign write = writeLeft && writeRight;
 	
