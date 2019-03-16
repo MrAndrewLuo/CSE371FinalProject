@@ -146,72 +146,8 @@ module DE1_SOC_D8M_RTL(
 	assign write = write_ready;
 	
 	always_ff @(posedge CLOCK_50) begin
-		case (pot)
-			0: begin
-				writedata_left_buff <= writedata_left >>> 4 ;
-				writedata_right_buff <= writedata_right >>> 4;
-			end
-			1: begin
-				writedata_left_buff <= (writedata_left >>> 3);
-				writedata_right_buff <= (writedata_right >>> 3);
-			end
-			2: begin
-				writedata_left_buff <= (writedata_left >>> 3) * 7;
-				writedata_right_buff <= (writedata_right >>> 3) * 7;
-			end
-			3: begin
-				writedata_left_buff <= (writedata_left >>> 3) * 7;
-				writedata_right_buff <= (writedata_right >>> 3) * 7;
-			end
-			4: begin
-				writedata_left_buff <= (writedata_left >>> 3) * 5;
-				writedata_right_buff <= (writedata_right >>> 3) * 5;
-			end
-			5: begin
-				writedata_left_buff <= (writedata_left >>> 3) * 3;
-				writedata_right_buff <= (writedata_right >>> 3) * 3;
-			end
-			6: begin
-				writedata_left_buff <= (writedata_left >>> 2) ;
-				writedata_right_buff <= (writedata_right >>> 2);
-			end
-			7: begin
-				writedata_left_buff <= (writedata_left >>> 2);
-				writedata_right_buff <= (writedata_right >>> 2);
-			end
-			8: begin
-				writedata_left_buff <= (writedata_left >>> 2) * 3;
-				writedata_right_buff <= (writedata_right >>> 2) * 3;
-			end
-			9: begin
-				writedata_left_buff <= (writedata_left >>> 2) * 3;
-				writedata_right_buff <= (writedata_right >>> 2) * 3;
-			end
-			10: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
-			end
-			11: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
-			end
-			12: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
-			end
-			13: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
-			end
-			14: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
-			end
-			default: begin
-				writedata_left_buff <= writedata_left;
-				writedata_right_buff <= writedata_right;
-			end
-		endcase
+			writedata_left_buff <= (writedata_left >>> pot) ;
+			writedata_right_buff <= (writedata_right >>> pot);
 	end
 	
 	clock_generator my_clock_gen(CLOCK2_50, reset, AUD_XCK);
