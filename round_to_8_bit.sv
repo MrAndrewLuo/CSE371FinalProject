@@ -13,3 +13,20 @@ always_comb begin
 	else out = in;
 	end
 endmodule
+
+module round_to_8_bit_testbench();
+ logic signed [16 - 1:0] in;
+ logic [7:0] out;
+
+ round_to_8_bit dut (.*);
+ 	initial begin
+		in <= 50; #10; 
+		in <= 255; #10;
+		in <= 300; #10;
+		in <= -20; #10;
+		in <= -300; #10;
+		in <= 0; #10;
+		$stop; // End simulation
+	end
+
+endmodule

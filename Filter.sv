@@ -480,7 +480,7 @@ module custom_kernel_testbench();
 		KEY[2] <= 0; KEY[1] <= 1; KEY[0] <= 1; SW <= '0; @(posedge clk); KEY[2] <= 1; @(posedge clk);
 		KEY[0] <= 0; @(posedge clk); @(posedge clk); @(posedge clk); KEY[0] <= 1; @(posedge clk);
 		KEY[1] <= 0; @(posedge clk); @(posedge clk); @(posedge clk); KEY[1] <= 1; @(posedge clk);
-
+	
 		for(i = 0; i < 2000; i++) @(posedge clk);
 		$stop; // End simulation
 	end
@@ -488,34 +488,46 @@ endmodule
 
 `timescale 1 ps / 1 ps
 module Filter_testbench();
-	logic		  [7:0]		oVGA_G;
-	logic		       		oVGA_HS;
-	logic		     [6:0]		HEX2;
+	 logic		          		VGA_CLK; // 25 MHz clock
+ 
+	// *** Incoming VGA signals ***
+	// Colors.  0 if iVGA_BLANK_N is false.  Higher numbers brighter
+	logic		     [7:0]		iVGA_B; // Blue
 	logic		     [7:0]		iVGA_G; // Green
-	logic		       		oVGA_BLANK_N;
-	logic		  [7:0]		oVGA_B;
-	logic		          		iVGA_HS;
-	logic		  [7:0]		oVGA_R;
-	logic		     [6:0]		HEX3;
 	logic		     [7:0]		iVGA_R; // Red
-	logic		     [6:0]		HEX1;
-	logic		     [6:0]		HEX0;
+	// Horizontal sync.  Low between horizontal lines.
+	logic		          		iVGA_HS;
+	// Vertical sync.  Low between video frames.
+	logic		          		iVGA_VS;
+	// Always zero
+	logic		          		iVGA_SYNC_N;
+	// True in area not shown, false during the actual image.
+ 	logic		          		iVGA_BLANK_N;
+
+	// *** Outgoing VGA signals ***
+	logic		  [7:0]		oVGA_B;
+	logic		  [7:0]		oVGA_G;
+	logic		  [7:0]		oVGA_R;
+	logic		       		oVGA_HS;
 	logic		       		oVGA_VS;
 	logic		       		oVGA_SYNC_N;
-	logic			     [7:0]		SW;   // SW[9] reserved for auto-focus mode.
-	logic		          		iVGA_SYNC_N;
-	logic		          		VGA_CLK; // 25 MHz clock
-	logic		          		iVGA_BLANK_N;
-	logic		     [7:0]		iVGA_B; // Blue
-	logic		     [9:0]		LEDR;
-	logic		          		iVGA_VS;
+ 	logic		       		oVGA_BLANK_N;
+	
+	// *** Board outputs ***
+	logic		     [6:0]		HEX1;
+	logic		     [6:0]		HEX2;
+	logic		     [6:0]		HEX3;
 	logic		     [6:0]		HEX4;
-	logic clk;
-	// *** User s ***
-	// *** Board s ***
 	logic		     [6:0]		HEX5;
-	logic 		     [1:0]		KEY; // Key[2] reserved for reset, key[3] for auto-focus.
+	logic		           		LEDR;
 
+	// *** User inputs ***
+	logic 		     [2:0]		KEY; // Key[2] reserved for reset, key[3] for auto-focus.
+	logic			     [8:0]		SW;
+
+	logic clk;
+	assign VGA_CLK = clk;
+   // SW[9] reserved for auto-focus mode.
 	// Set up the clock.
 	parameter PERIOD = 40; // period = length of clock
 	initial begin
@@ -523,12 +535,11 @@ module Filter_testbench();
 		forever #(PERIOD/2) clk = ~clk;
 	end
 
-	Filter dut (.*); // ".*" Implicitly connects all ports to variables with matching names
-
-	assign VGA_CLK = clk;
+	Filter #(50, 10) dut  (.*); // ".*" Implicitly connects all ports to variables with matching names
 	
 	integer i;
 	initial begin
+		KEY[2] <= 0; @(posedge clk); KEY[2] <= 1;
 		iVGA_VS <= 0; iVGA_BLANK_N <= 0; iVGA_SYNC_N <= 0; iVGA_R <= 100; iVGA_G <= 100; iVGA_B <=100;
 
 		for(i = 0; i < 2000; i++) @(posedge clk);
